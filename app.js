@@ -30,7 +30,8 @@ if(CORS_ENABLED){
 
   app.use(cors(corsOptions));
 }else{
-  app.use(cors());
+  console.log("object");
+  app.use(cors({origin:"*"}));
 }
 
 
