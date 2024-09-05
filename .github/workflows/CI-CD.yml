@@ -19,9 +19,9 @@ jobs:
         DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
       run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
     - name: Build the Docker image
-      run: docker build -t asb00/tuana-server:1.0.0 .
+      run: docker build -t asb00/tuana-server:latest .
     - name: Push to DockerHub
-      run: docker push asb00/tuana-server:1.0.0
+      run: docker push asb00/tuana-server:latest
 
     - uses: a7ul/tar-action@v1.1.0
       with:
