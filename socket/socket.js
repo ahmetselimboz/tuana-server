@@ -1,4 +1,5 @@
 const dataSockets = require("./dataSockets");
+
 const connectedUsers = new Set();
 
 module.exports =  (io) => {
@@ -10,8 +11,9 @@ module.exports =  (io) => {
         connectedUsers.size
       );
     });
-
+    
     dataSockets(io, socket);
+  
 
     socket.on("disconnect", () => {
       connectedUsers.delete(socket.id);

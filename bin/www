@@ -11,6 +11,7 @@ const { Server } = require("socket.io");
 const socketHandler = require("../socket/socket");
 
 const { MONGODB_CONNECTION_STRING, PORT } = require("../config/environments");
+const database = require('../db/db');
 /**
  * Get port from environment and store in Express.
  */
@@ -95,4 +96,5 @@ function onListening() {
   var bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
   debug("Listening on " + bind);
   console.log(`Server standing ${port} port`);
+  database.connect({MONGODB_CONNECTION_STRING});
 }
