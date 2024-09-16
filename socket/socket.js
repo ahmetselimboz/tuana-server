@@ -1,19 +1,26 @@
+const dataSockets = require("./dataSockets");
 
-const dataSockets = require('./dataSockets');
-const userSockets = require('./userSockets');
+const connectedUsers = new Set();
 
-module.exports = (io) => {
-    io.on('connection', (socket) => {
-     
-      console.log('New connection established');
-  
-    //   Kullanıcı durumları (online/offline) ile ilgili Socket.IO event'ları
-        userSockets(io, socket);
-
-        dataSockets(io,socket)
-  
-      socket.on('disconnect', () => {
-        console.log('User disconnected');
-      });
+module.exports =  (io) => {
+  io.on("connection", async (socket) => {
+    socket.on("register", () => {
+      connectedUsers.add(socket.id);
+      console.log(
+        "A user connected. Total connected users:",
+        connectedUsers.size
+      );
     });
-  };
+    
+    dataSockets(io, socket);
+  
+
+    socket.on("disconnect", () => {
+      connectedUsers.delete(socket.id);
+      console.log(
+        "A user disconnected. Total connected users:",
+        connectedUsers.size
+      );
+    });
+  });
+};

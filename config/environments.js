@@ -5,7 +5,7 @@ module.exports = {
   NODE_ENV: process.env.NODE_ENV || "debug",
   MONGODB_CONNECTION_STRING:
     process.env.MONGODB_CONNECTION_STRING ||
-    "mongodb://127.0.0.1:27017/PortfolioV2",
+    "mongodb://127.0.0.1:27017/TuanaDB",
   JWT: {
     SECRET: process.env.JWT_SECRET || "123456",
     EXPIRE_TIME: !isNaN(parseInt(process.env.TOKEN_EXPIRE_TIME))
