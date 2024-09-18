@@ -45,9 +45,8 @@ app.use("/api", indexRouter);
 // error handler
 app.use(function (err, req, res, next) {
   console.log(chalk.red(err));
-
   res.locals.error = req.app.get("env") === "development" ? err : {};
-  res.status(500).json({ error: err });
+  res.status(505).json({ error: err.message });
 });
 
 module.exports = app;
