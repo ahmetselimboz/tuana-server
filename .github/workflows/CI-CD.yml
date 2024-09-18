@@ -2,39 +2,36 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "v1" ]
-
+    branches: ["development"]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Login DockerHub
-      env:
-        DOCKER_USERNAME: ${{secrets.DOCKER_USERNAME}}
-        DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
-      run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-    - name: Build the Docker image
-      run: docker build -t asb00/tuana-server:latest .
-    - name: Push to DockerHub
-      run: docker push asb00/tuana-server:latest
+      - uses: actions/checkout@v3
+      - name: Login DockerHub
+        env:
+          DOCKER_USERNAME: ${{secrets.DOCKER_USERNAME}}
+          DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+        run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+      - name: Build the Docker image
+        run: docker build -t asb00/tuana-server:latest .
+      - name: Push to DockerHub
+        run: docker push asb00/tuana-server:latest
 
-    - uses: a7ul/tar-action@v1.1.0
-      with:
-        command: c
-        cwd: "./"
-        files: |
-          captain-definition
-        outPath: deploy.tar
-    
-    - name: Deploy to CapRover
-      uses: floms/action-caprover@v1
-      with:
-        host: '${{ secrets.CAPROVER_SERVER }}'
-        password: '${{ secrets.CAPROVER_PASSWORD }}'
-        app: '${{ secrets.APP_NAME }}'
-        image: '${{ secrets.IMAGE_NAME }}'
+      - uses: a7ul/tar-action@v1.1.0
+        with:
+          command: c
+          cwd: "./"
+          files: |
+            captain-definition
+          outPath: deploy.tar
+
+      - name: Deploy to CapRover
+        uses: floms/action-caprover@v1
+        with:
+          host: "${{ secrets.CAPROVER_SERVER }}"
+          password: "${{ secrets.CAPROVER_PASSWORD }}"
+          app: "${{ secrets.APP_NAME }}"
+          image: "${{ secrets.IMAGE_NAME }}"

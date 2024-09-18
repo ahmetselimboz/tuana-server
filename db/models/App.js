@@ -4,16 +4,20 @@ const Schema = mongoose.Schema(
   {
     userId: {
       type: String,
-      require: true,
+      required: true,
       trim: true,
     },
     appId: {
       type: String,
-      require: true,
+      required: true,
       trim: true,
     },
     data: [
       {
+        visitorId: {
+          type: String,
+          trim: true,
+        },
         ip: {
           type: String,
           trim: true,
@@ -22,8 +26,10 @@ const Schema = mongoose.Schema(
           type: String,
           trim: true,
         },
+        data:{},
         time: {
-          type: String,
+          type: Date,
+          default: Date.now,
           trim: true,
         },
         url: {
@@ -33,6 +39,7 @@ const Schema = mongoose.Schema(
         referrer: {
           type: String,
           trim: true,
+          default: "Direct/None",
         },
         userDevice: {
           browser: {
@@ -65,7 +72,23 @@ const Schema = mongoose.Schema(
               trim: true,
             },
           },
-          device: {},
+          device: {
+            vendor: {
+              type: String,
+              trim: true,
+              default: null,
+            },
+            model: {
+              type: String,
+              trim: true,
+              default: null,
+            },
+            type: {
+              type: String,
+              trim: true,
+              default: null,
+            },
+          },
         },
         location: {
           country: {
@@ -90,6 +113,10 @@ const Schema = mongoose.Schema(
   },
   { versionKey: false, timestamps: true }
 );
+
+Schema.index({ userId: 1, appId: 1 });
+Schema.index({ 'data.visitorId': 1 });
+Schema.index({ 'data.time': 1 });
 
 const App = mongoose.model("App", Schema);
 

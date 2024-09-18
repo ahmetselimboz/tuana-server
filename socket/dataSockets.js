@@ -14,15 +14,18 @@ module.exports = (io, socket) => {
         }).save();
       }
 
+      data.visitorId = socket.id
+      
       const app = await App.findOneAndUpdate(
         { appId: data.appId },
         {
-          $push: {
-            data: { ip: data.ip, type: data.type },
-          },
+          $push: { data },
         },
         { new: true }
       );
+      console.log("🚀 ~ socket.on ~ app:", app)
+
+      
     } catch (error) {}
   });
 };
