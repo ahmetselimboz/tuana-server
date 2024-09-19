@@ -23,7 +23,7 @@ module.exports = (io, socket) => {
         },
         { new: true }
       );
-      console.log("🚀 ~ socket.on ~ app:", app)
+     
 
       
     } catch (error) {}
