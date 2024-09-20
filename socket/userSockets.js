@@ -1,8 +1,11 @@
+module.exports = (io, socket, activeUsers) => {
 
+  socket.on("getActiveUsers", async (appId)=>{
+    io.to(appId).emit("activeUsers", activeUsers[appId]);
+  })
 
-
-module.exports = (io, socket) => {
   socket.on("joinRoom", (appId) => {
+  
     socket.join(appId);
   });
   

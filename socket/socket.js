@@ -12,10 +12,11 @@ module.exports = (io) => {
       activeUsers[appId].push(socket.id);
       socket.join(appId);
       io.to(appId).emit("activeUsers", activeUsers[appId]);
+     
     });
 
     dataSockets(io, socket);
-    userSockets(io, socket);
+    userSockets(io, socket, activeUsers);
 
     socket.on("disconnect", (appId) => {
       for (let appId in activeUsers) {
