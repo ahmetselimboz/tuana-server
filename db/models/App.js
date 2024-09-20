@@ -12,6 +12,16 @@ const Schema = mongoose.Schema(
       required: true,
       trim: true,
     },
+    type:{
+      type:String,
+      trim: true,
+      required: true,
+    },
+    title:{
+      type:String,
+      trim: true,
+      required: true,
+    },
     data: [
       {
         visitorId: {

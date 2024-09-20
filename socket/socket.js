@@ -1,29 +1,39 @@
 const dataSockets = require("./dataSockets");
 
-const connectedUsers = new Set();
+const activeUsers = {};
 
 module.exports = (io) => {
   io.on("connection", async (socket) => {
+    socket.on("register", async (appId) => {
+     
+      if (!activeUsers[appId]) {
+        activeUsers[appId] = [];
+      }
 
-    socket.on("register", () => {
-      console.log("Register event received for socket id:", socket.id);
-      connectedUsers.add(socket.id);
-      console.log(
-        "A user connected. Total connected users:",
-        connectedUsers.size
-      );
+      activeUsers[appId].push(socket.id);
+      
+      io.to(appId).emit("activeUsers", activeUsers[appId]);
+
+      socket.join(appId);
     });
+     
 
-    
     dataSockets(io, socket);
 
+    socket.on("disconnect", (appId) => {
+      for (let appId in activeUsers) {
+        activeUsers[appId] = activeUsers[appId].filter(
+          (userId) => userId !== socket.id
+        );
 
-    socket.on("disconnect", () => {
-      connectedUsers.delete(socket.id);
-      console.log(
-        "A user disconnected. Total connected users:",
-        connectedUsers.size
-      );
+        // Güncel listeyi siteId odasına gönder
+        io.to(appId).emit("activeUsers", activeUsers[appId]);
+
+        // Eğer siteId'nin aktif kullanıcı listesi boşsa bu grubu kaldır
+        if (activeUsers[appId].length === 0) {
+          delete activeUsers[appId];
+        }
+      }
     });
   });
 };

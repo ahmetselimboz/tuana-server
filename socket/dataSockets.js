@@ -10,6 +10,8 @@ module.exports = (io, socket) => {
         await new App({
           userId: "#",
           appId: data.appId,
+          type: "web",
+          title: "www.tuanalytics.com",
           data: [],
         }).save();
       }
@@ -28,4 +30,10 @@ module.exports = (io, socket) => {
       
     } catch (error) {}
   });
+
+  socket.on("getCurrentVisitor", async ()=>{
+
+
+    socket.emit("setCurrentVisitor",)
+  })
 };
