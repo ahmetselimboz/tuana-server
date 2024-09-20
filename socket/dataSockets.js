@@ -1,6 +1,6 @@
 const App = require("../db/models/App");
 
-module.exports = (io, socket) => {
+module.exports = (io, socket, activeUsers) => {
   socket.on("trackEvent", async (data) => {
     try {
       console.log("🚀 ~ socket.on ~ data:", data);
@@ -26,14 +26,9 @@ module.exports = (io, socket) => {
         { new: true }
       );
      
-
-      
     } catch (error) {}
   });
 
-  socket.on("getCurrentVisitor", async ()=>{
 
 
-    socket.emit("setCurrentVisitor",)
-  })
 };

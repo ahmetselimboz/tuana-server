@@ -1,24 +1,21 @@
 const dataSockets = require("./dataSockets");
+const userSockets = require("./userSockets");
 
 const activeUsers = {};
 
 module.exports = (io) => {
   io.on("connection", async (socket) => {
     socket.on("register", async (appId) => {
-     
       if (!activeUsers[appId]) {
         activeUsers[appId] = [];
       }
-
       activeUsers[appId].push(socket.id);
-      
-      io.to(appId).emit("activeUsers", activeUsers[appId]);
-
       socket.join(appId);
+      io.to(appId).emit("activeUsers", activeUsers[appId]);
     });
-     
 
     dataSockets(io, socket);
+    userSockets(io, socket);
 
     socket.on("disconnect", (appId) => {
       for (let appId in activeUsers) {

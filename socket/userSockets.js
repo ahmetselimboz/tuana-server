@@ -2,17 +2,12 @@
 
 
 module.exports = (io, socket) => {
-  socket.on('userOnline', (userId) => {
-    console.log(`User ${userId} is online`);
-    io.emit('userStatus', { userId, status: 'online' });
+  socket.on("joinRoom", (appId) => {
+    socket.join(appId);
   });
-
-  socket.on('userOffline', (userId) => {
-    console.log(`User ${userId} is offline`);
-    io.emit('userStatus', { userId, status: 'offline' });
-  });
-
   
-
+  socket.on("leaveRoom", (appId) => {
+    socket.leave(appId);
+  });
 
 };
