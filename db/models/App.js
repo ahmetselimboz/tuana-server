@@ -12,13 +12,13 @@ const Schema = mongoose.Schema(
       required: true,
       trim: true,
     },
-    type:{
-      type:String,
+    type: {
+      type: String,
       trim: true,
       required: true,
     },
-    title:{
-      type:String,
+    title: {
+      type: String,
       trim: true,
       required: true,
     },
@@ -36,7 +36,7 @@ const Schema = mongoose.Schema(
           type: String,
           trim: true,
         },
-        data:{},
+        data: {},
         time: {
           type: Date,
           default: Date.now,
@@ -120,13 +120,31 @@ const Schema = mongoose.Schema(
         },
       },
     ],
+    visitor: [
+      {
+        visitorId: {
+          type: String,
+          trim: true,
+        },
+        new: {
+          type: Boolean,
+          trim: true,
+          default: false
+        },
+        date:{
+          type:Date,
+          trim: true,
+          default: new Date()
+        }
+      },
+    ],
   },
   { versionKey: false, timestamps: true }
 );
 
 Schema.index({ userId: 1, appId: 1 });
-Schema.index({ 'data.visitorId': 1 });
-Schema.index({ 'data.time': 1 });
+Schema.index({ "data.visitorId": 1 });
+Schema.index({ "data.time": 1 });
 
 const App = mongoose.model("App", Schema);
 

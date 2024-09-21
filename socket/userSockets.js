@@ -1,16 +1,31 @@
 module.exports = (io, socket, activeUsers) => {
-
-  socket.on("getActiveUsers", async (appId)=>{
-    io.to(appId).emit("activeUsers", activeUsers[appId]);
-  })
+  socket.on("getActiveUsers", async (appId) => {
+    try {
+      io.to(appId).emit("activeUsers", activeUsers[appId]);
+    } catch (error) {
+      console.log("🚀 ~ socket - getActiveUsers ~ error:", error);
+      auditLogs.error("" || "User", "socket", "getActiveUsers", error);
+      logger.error("" || "User", "socket", "getActiveUsers", error);
+    }
+  });
 
   socket.on("joinRoom", (appId) => {
-  
-    socket.join(appId);
-  });
-  
-  socket.on("leaveRoom", (appId) => {
-    socket.leave(appId);
+    try {
+      socket.join(appId);
+    } catch (error) {
+      console.log("🚀 ~ socket - joinRoom ~ error:", error);
+      auditLogs.error("" || "User", "socket", "joinRoom", error);
+      logger.error("" || "User", "socket", "joinRoom", error);
+    }
   });
 
+  socket.on("leaveRoom", (appId) => {
+    try {
+      socket.leave(appId);
+    } catch (error) {
+      console.log("🚀 ~ socket - leaveRoom ~ error:", error);
+      auditLogs.error("" || "User", "socket", "leaveRoom", error);
+      logger.error("" || "User", "socket", "leaveRoom", error);
+    }
+  });
 };
