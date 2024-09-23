@@ -37,7 +37,7 @@ const Schema = mongoose.Schema(
           trim: true,
         },
         data: {},
-        time: {
+        date: {
           type: Date,
           default: Date.now,
           trim: true,

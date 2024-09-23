@@ -6,6 +6,37 @@ const moment = require("moment");
 const today = new Date();
 today.setHours(0, 0, 0, 0);
 
+const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
+  try {
+    return visitors.filter((item) => {
+      const date = new Date(item.date);
+      date.setHours(0, 0, 0, 0);
+
+      if (!firstdate || firstdate === "null") {
+        const getlastdate = new Date(lastdate);
+        getlastdate.setHours(0, 0, 0, 0);
+
+        return date.getTime() === getlastdate.getTime();
+      } else {
+        const getlastdate = new Date(lastdate);
+        getlastdate.setHours(0, 0, 0, 0);
+
+        const getfirstdate = new Date(firstdate);
+        getfirstdate.setHours(0, 0, 0, 0);
+
+        return (
+          date.getTime() >= getlastdate.getTime() &&
+          date.getTime() <= getfirstdate.getTime()
+        );
+      }
+    });
+  } catch (error) {
+    console.log("🚀 ~ filterVisitorsByDate ~ error:", error);
+    auditLogs.error("" || "User", "appServices", "filterVisitorsByDate", error);
+    logger.error("" || "User", "appServices", "filterVisitorsByDate", error);
+  }
+};
+
 const saveTrackEvent = async (io, socket, data) => {
   try {
     const result = await App.findOne({ appId: data.appId });
@@ -90,7 +121,7 @@ const findTopPage = async (body) => {
     const findApp = await App.findOne({ appId: body.appId }).select("data");
 
     const urlCounts = findApp.data.reduce((acc, item) => {
-      const visitDate = new Date(item.time);
+      const visitDate = new Date(item.date);
       visitDate.setHours(0, 0, 0, 0);
 
       if (visitDate.getTime() === today.getTime()) {
@@ -117,42 +148,41 @@ const findTopPage = async (body) => {
   }
 };
 
-
-
 const calculateSessionDuration = async (body) => {
   try {
     const findApp = await App.find({ appId: body.appId }).select("data");
 
-    const data = findApp.flatMap((app) => {
-      return app.data.map((item) => {
-        return {
-          visitorId: item.visitorId,
-          type: item.type,
-          time: item.time
-        };
-      });
-    });
-    
+    const data = findApp.flatMap((app) =>
+      app.data.map((item) => ({
+        visitorId: item.visitorId,
+        type: item.type,
+        date: item.date,
+      }))
+    );
+
+    const filteredData = filterVisitorsByDate(
+      data,
+      body.firstdate,
+      body.lastdate
+    );
+
     let sessions = {};
-    
-   
-    data.forEach((entry) => {
+
+    filteredData.forEach((entry) => {
       const visitorId = entry.visitorId;
-      const entryTime = moment(entry.time);
-    
+      const entryTime = moment(entry.date);
+
       if (!sessions[visitorId]) {
         sessions[visitorId] = [];
       }
-    
-     
+
       if (entry.type === "page_view") {
         sessions[visitorId].push({
           viewTime: entryTime,
           exitTime: null,
         });
       }
-    
-    
+
       if (entry.type === "page_exit") {
         const lastSession = sessions[visitorId].find(
           (session) => session.exitTime === null
@@ -165,26 +195,24 @@ const calculateSessionDuration = async (body) => {
 
     let totalDuration = 0;
     let sessionCount = 0;
-    
+
     Object.keys(sessions).forEach((visitorId) => {
       sessions[visitorId].forEach((session) => {
         if (session.exitTime && session.viewTime) {
-          const duration = session.exitTime.diff(session.viewTime, "seconds"); 
+          const duration = session.exitTime.diff(session.viewTime, "seconds");
           totalDuration += duration;
           sessionCount++;
         }
       });
     });
 
+    const averageDurationInSeconds =
+      sessionCount > 0 ? totalDuration / sessionCount : 0;
 
-    const averageDurationInSeconds = sessionCount > 0 ? totalDuration / sessionCount : 0;
-
- 
     const minutes = Math.floor(averageDurationInSeconds / 60);
     const seconds = Math.floor(averageDurationInSeconds % 60);
-  
-    return { minutes, seconds };
 
+    return { minutes, seconds };
   } catch (error) {
     console.log("🚀 ~ calculateSessionDuration ~ error:", error);
     auditLogs.error(
@@ -202,6 +230,54 @@ const calculateSessionDuration = async (body) => {
   }
 };
 
+const lineCard = async (body, query) => {
+  try {
+    const { firstdate, lastdate } = query;
+
+    const totalVisitor = await App.findOne({ appId: body.appId }).select(
+      "visitor"
+    );
+
+    const totalVisitorResult = filterVisitorsByDate(
+      totalVisitor.visitor,
+      firstdate,
+      lastdate
+    );
+
+    const totalPageResult = await App.find({ appId: body.appId }).select(
+      "data"
+    );
+
+    const totalPage = totalPageResult[0]?.data.filter(
+      (item) => item.type === "page_view"
+    );
+
+    const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
+
+    const newVisitors = totalVisitor?.visitor.filter(
+      (item) => item.new === true
+    );
+
+    const calculateDuration = await calculateSessionDuration({
+      appId: body.appId,
+      firstdate,
+      lastdate,
+    });
+
+    const result = {
+      totalVisitor: totalVisitorResult.length,
+      totalPage: totalPageRange.length,
+      newVisitors: newVisitors.length,
+      calculateDuration: `${calculateDuration.minutes}m ${calculateDuration.seconds}s`,
+    };
+
+    return result;
+  } catch (error) {
+    console.log("🚀 ~ lineCard ~ error:", error);
+    auditLogs.error("" || "User", "appServices", "lineCard", error);
+    logger.error("" || "User", "appServices", "lineCard", error);
+  }
+};
 
 module.exports = {
   saveVisitor,
@@ -209,4 +285,5 @@ module.exports = {
   findTopPage,
   newVisitors,
   calculateSessionDuration,
+  lineCard,
 };
