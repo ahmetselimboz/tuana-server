@@ -9,6 +9,7 @@ const {
   calculateSessionDuration,
   lineCard,
 } = require("../services/appServices");
+
 const router = require("express").Router();
 
 router.post("/new-visitor", async (req, res) => {

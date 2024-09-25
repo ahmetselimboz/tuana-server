@@ -77,7 +77,7 @@ const saveVisitor = async (data) => {
       await App.findOneAndUpdate(
         { appId: data.appId },
         {
-          $push: { visitor: { visitorId: data.visitorId, new: true } },
+          $push: { visitor: { visitorId: data.visitorId, new: true, date: new Date() } },
         },
         { new: true }
       );
@@ -85,7 +85,7 @@ const saveVisitor = async (data) => {
       await App.findOneAndUpdate(
         { appId: data.appId },
         {
-          $push: { visitor: { visitorId: data.visitorId, new: false } },
+          $push: { visitor: { visitorId: data.visitorId, new: false, date: new Date() } },
         },
         { new: true }
       );
@@ -258,16 +258,24 @@ const lineCard = async (body, query) => {
       (item) => item.new === true
     );
 
+    const newVisitorsResult = filterVisitorsByDate(
+      newVisitors,
+      firstdate,
+      lastdate
+    );
+
     const calculateDuration = await calculateSessionDuration({
       appId: body.appId,
       firstdate,
       lastdate,
     });
 
+   
+
     const result = {
-      totalVisitor: totalVisitorResult.length,
-      totalPage: totalPageRange.length,
-      newVisitors: newVisitors.length,
+      totalVisitor: totalVisitorResult,
+      totalPage: totalPageRange,
+      newVisitors: newVisitorsResult,
       calculateDuration: `${calculateDuration.minutes}m ${calculateDuration.seconds}s`,
     };
 
