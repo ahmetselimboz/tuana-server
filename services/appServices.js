@@ -9,13 +9,14 @@ today.setHours(0, 0, 0, 0);
 const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
   try {
     return visitors.filter((item) => {
+ 
       const date = new Date(item.date);
       date.setHours(0, 0, 0, 0);
 
       if (!firstdate || firstdate === "null") {
         const getlastdate = new Date(lastdate);
         getlastdate.setHours(0, 0, 0, 0);
-
+      
         return date.getTime() === getlastdate.getTime();
       } else {
         const getlastdate = new Date(lastdate);
@@ -77,7 +78,9 @@ const saveVisitor = async (data) => {
       await App.findOneAndUpdate(
         { appId: data.appId },
         {
-          $push: { visitor: { visitorId: data.visitorId, new: true, date: new Date() } },
+          $push: {
+            visitor: { visitorId: data.visitorId, new: true, date: new Date() },
+          },
         },
         { new: true }
       );
@@ -85,7 +88,13 @@ const saveVisitor = async (data) => {
       await App.findOneAndUpdate(
         { appId: data.appId },
         {
-          $push: { visitor: { visitorId: data.visitorId, new: false, date: new Date() } },
+          $push: {
+            visitor: {
+              visitorId: data.visitorId,
+              new: false,
+              date: new Date(),
+            },
+          },
         },
         { new: true }
       );
@@ -253,6 +262,7 @@ const lineCard = async (body, query) => {
     );
 
     const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
+    
 
     const newVisitors = totalVisitor?.visitor.filter(
       (item) => item.new === true
@@ -270,8 +280,6 @@ const lineCard = async (body, query) => {
       lastdate,
     });
 
-   
-
     const result = {
       totalVisitor: totalVisitorResult,
       totalPage: totalPageRange,
@@ -279,11 +287,40 @@ const lineCard = async (body, query) => {
       calculateDuration: `${calculateDuration.minutes}m ${calculateDuration.seconds}s`,
     };
 
-    return result;
+    const duration = {
+      calculateDuration: `${calculateDuration.minutes}`,
+    };
+
+    return { result, duration };
   } catch (error) {
     console.log("🚀 ~ lineCard ~ error:", error);
     auditLogs.error("" || "User", "appServices", "lineCard", error);
     logger.error("" || "User", "appServices", "lineCard", error);
+  }
+};
+
+const deviceCard = async (body, query) => {
+  try {
+    const { firstdate, lastdate } = query;
+
+    const totalPageResult = await App.find({ appId: body.appId }).select(
+      "data"
+    );
+
+    const totalPage = totalPageResult[0]?.data.filter(
+      (item) => item.type === "page_view"
+    );
+   
+    const totalPageRange = await filterVisitorsByDate(totalPage, firstdate, lastdate);
+    const result = {
+      totalPage: totalPageRange,
+    };
+
+    return result;
+  } catch (error) {
+    console.log("🚀 ~ deviceCard ~ error:", error);
+    auditLogs.error("" || "User", "appServices", "deviceCard", error);
+    logger.error("" || "User", "appServices", "deviceCard", error);
   }
 };
 
@@ -294,4 +331,5 @@ module.exports = {
   newVisitors,
   calculateSessionDuration,
   lineCard,
+  deviceCard,
 };

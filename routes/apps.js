@@ -8,6 +8,7 @@ const {
   newVisitors,
   calculateSessionDuration,
   lineCard,
+  deviceCard,
 } = require("../services/appServices");
 
 const router = require("express").Router();
@@ -69,11 +70,27 @@ router.post("/line-card", async (req, res) => {
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ visitor: result }));
+      .json(Response.successResponse({ visitor: result.result, duration: result.duration }));
   } catch (error) {
-    console.log("🚀 ~ /total-visit ~ error:", error);
-    auditLogs.error("" || "User", "Apps", "POST /total-visit", error);
-    logger.error("" || "User", "Apps", "POST /total-visit", error);
+    console.log("🚀 ~ /line-card ~ error:", error);
+    auditLogs.error("" || "User", "Apps", "POST /line-card", error);
+    logger.error("" || "User", "Apps", "POST /line-card", error);
+  }
+});
+
+router.post("/device-card", async (req, res) => {
+  try {
+    const { body, query } = req;
+    
+    const result = await deviceCard(body, query);
+
+    return res
+      .status(_enum.HTTP_CODES.OK)
+      .json(Response.successResponse({ data: result }));
+  } catch (error) {
+    console.log("🚀 ~ /device-card ~ error:", error);
+    auditLogs.error("" || "User", "Apps", "POST /device-card", error);
+    logger.error("" || "User", "Apps", "POST /device-card", error);
   }
 });
 module.exports = router;
