@@ -9,6 +9,7 @@ const {
   calculateSessionDuration,
   lineCard,
   deviceCard,
+  pageCard,
 } = require("../services/appServices");
 
 const router = require("express").Router();
@@ -83,6 +84,22 @@ router.post("/device-card", async (req, res) => {
     const { body, query } = req;
     
     const result = await deviceCard(body, query);
+
+    return res
+      .status(_enum.HTTP_CODES.OK)
+      .json(Response.successResponse({ data: result }));
+  } catch (error) {
+    console.log("🚀 ~ /device-card ~ error:", error);
+    auditLogs.error("" || "User", "Apps", "POST /device-card", error);
+    logger.error("" || "User", "Apps", "POST /device-card", error);
+  }
+});
+
+router.post("/page-card", async (req, res) => {
+  try {
+    const { body, query } = req;
+    
+    const result = await pageCard(body, query);
 
     return res
       .status(_enum.HTTP_CODES.OK)

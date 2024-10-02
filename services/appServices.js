@@ -9,14 +9,13 @@ today.setHours(0, 0, 0, 0);
 const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
   try {
     return visitors.filter((item) => {
- 
       const date = new Date(item.date);
       date.setHours(0, 0, 0, 0);
 
       if (!firstdate || firstdate === "null") {
         const getlastdate = new Date(lastdate);
         getlastdate.setHours(0, 0, 0, 0);
-      
+
         return date.getTime() === getlastdate.getTime();
       } else {
         const getlastdate = new Date(lastdate);
@@ -262,7 +261,6 @@ const lineCard = async (body, query) => {
     );
 
     const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
-    
 
     const newVisitors = totalVisitor?.visitor.filter(
       (item) => item.new === true
@@ -310,10 +308,63 @@ const deviceCard = async (body, query) => {
     const totalPage = totalPageResult[0]?.data.filter(
       (item) => item.type === "page_view"
     );
-   
-    const totalPageRange = await filterVisitorsByDate(totalPage, firstdate, lastdate);
+
+    const totalPageRange = await filterVisitorsByDate(
+      totalPage,
+      firstdate,
+      lastdate
+    );
     const result = {
       totalPage: totalPageRange,
+    };
+
+    return result;
+  } catch (error) {
+    console.log("🚀 ~ deviceCard ~ error:", error);
+    auditLogs.error("" || "User", "appServices", "deviceCard", error);
+    logger.error("" || "User", "appServices", "deviceCard", error);
+  }
+};
+
+const pageCard = async (body, query) => {
+  try {
+    const { firstdate, lastdate } = query;
+
+    const totalPageResult = await App.find({ appId: body.appId }).select(
+      "data"
+    );
+
+    const totalPage = totalPageResult[0]?.data.filter(
+      (item) => item.type === "page_view"
+    );
+
+    const totalPageRange = await filterVisitorsByDate(
+      totalPage,
+      firstdate,
+      lastdate
+    );
+
+    const pageViews = totalPageRange.reduce((acc, page) => {
+      const route = page.url;
+
+   
+      if (!acc[route]) {
+        acc[route] = 0;
+      }
+
+      acc[route] += 1;
+
+      return acc;
+    }, {});
+
+  
+    const formattedPageViews = Object.keys(pageViews).map((route) => ({
+      route: route,
+      visitor: pageViews[route].toString(), 
+    }));
+
+    const result = {
+      totalPage: formattedPageViews,
     };
 
     return result;
@@ -332,4 +383,5 @@ module.exports = {
   calculateSessionDuration,
   lineCard,
   deviceCard,
+  pageCard,
 };
