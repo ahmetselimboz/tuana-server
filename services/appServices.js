@@ -3,6 +3,29 @@ const logger = require("../lib/logger/logger");
 const auditLogs = require("../lib/auditLogs");
 const moment = require("moment");
 
+const data = [
+  { referrer: "http://localhost:3000/analytics?id=TNAKLYTP" },
+  { referrer: "https://www.google.com" },
+  { referrer: "https://www.github.com" },
+  { referrer: "https://www.linkedin.com" },
+  { referrer: "https://twitter.com" },
+  { referrer: "https://yandex.com" },
+  { referrer: "https://www.bing.com" },
+  { referrer: "https://yahoo.com" },
+  { referrer: "https://yahoo.com" },
+  { referrer: "https://twitter.com" },
+];
+
+// Domaini referrer URL'sinden dinamik olarak çıkartan fonksiyon
+function getDomainFromReferrer(referrer) {
+  try {
+    const url = new URL(referrer);
+    return url.hostname.replace("www.", ""); // 'www.' kısmını kaldır
+  } catch (error) {
+    return "Direct/None"; // Referrer yoksa 'Direct/None' olarak kabul et
+  }
+}
+
 const today = new Date();
 today.setHours(0, 0, 0, 0);
 
@@ -347,7 +370,6 @@ const pageCard = async (body, query) => {
     const pageViews = totalPageRange.reduce((acc, page) => {
       const route = page.url;
 
-   
       if (!acc[route]) {
         acc[route] = 0;
       }
@@ -357,10 +379,9 @@ const pageCard = async (body, query) => {
       return acc;
     }, {});
 
-  
     const formattedPageViews = Object.keys(pageViews).map((route) => ({
       route: route,
-      visitor: pageViews[route].toString(), 
+      visitor: pageViews[route].toString(),
     }));
 
     const result = {
@@ -393,16 +414,15 @@ const locationCard = async (body, query) => {
       lastdate
     );
 
-
     const uniqueVisitors = new Set();
     const countriesData = {};
 
-    totalPageRange.forEach((entry) => { 
+    totalPageRange.forEach((entry) => {
       const country = entry.location.country;
       const visitorId = entry.visitorId;
-      if (country  && visitorId && !uniqueVisitors.has(visitorId)) {
-        uniqueVisitors.add(visitorId); 
-  
+      if (country && visitorId && !uniqueVisitors.has(visitorId)) {
+        uniqueVisitors.add(visitorId);
+
         if (countriesData[country]) {
           countriesData[country]++;
         } else {
@@ -410,11 +430,13 @@ const locationCard = async (body, query) => {
         }
       }
     });
-  
-    const locationData = Object.entries(countriesData).map(([country, visitor]) => ({ country, visitor }));
+
+    const locationData = Object.entries(countriesData).map(
+      ([country, visitor]) => ({ country, visitor })
+    );
 
     const result = {
-      totalLocationVisitor: locationData
+      totalLocationVisitor: locationData,
     };
 
     return result;
@@ -422,6 +444,106 @@ const locationCard = async (body, query) => {
     console.log("🚀 ~ locationCard ~ error:", error);
     auditLogs.error("" || "User", "appServices", "locationCard", error);
     logger.error("" || "User", "appServices", "locationCard", error);
+  }
+};
+
+const sourcesCard = async (body, query) => {
+  try {
+    const { firstdate, lastdate } = query;
+
+    const totalPageResult = await App.find({ appId: body.appId }).select(
+      "data"
+    );
+
+    const totalPage = totalPageResult[0]?.data.filter(
+      (item) => item.type === "page_view"
+    );
+
+    const totalPageRange = await filterVisitorsByDate(
+      totalPage,
+      firstdate,
+      lastdate
+    );
+
+    const referrerCounts = {};
+    console.log(totalPageRange.length);
+    totalPageRange.forEach((item) => {
+      const domain = getDomainFromReferrer(item.referrer);
+
+      if (referrerCounts[domain]) {
+        referrerCounts[domain]++;
+      } else {
+        referrerCounts[domain] = 1;
+      }
+    });
+
+    const sources = Object.keys(referrerCounts).map((domain) => ({
+      route: domain,
+      visitor: referrerCounts[domain],
+    }));
+
+    const result = {
+      totalSources: sources,
+    };
+
+    return result;
+  } catch (error) {
+    console.log("🚀 ~ sourcesCard ~ error:", error);
+    auditLogs.error("" || "User", "appServices", "sourcesCard", error);
+    logger.error("" || "User", "appServices", "sourcesCard", error);
+  }
+};
+
+const languagesCard = async (body, query) => {
+  try {
+    const { firstdate, lastdate } = query;
+
+    const totalPageResult = await App.find({ appId: body.appId }).select(
+      "data"
+    );
+
+    const totalPage = totalPageResult[0]?.data.filter(
+      (item) => item.type === "page_view"
+    );
+
+    const totalPageRange = await filterVisitorsByDate(
+      totalPage,
+      firstdate,
+      lastdate
+    );
+
+    const result = {
+      visitor: [],
+      languages: []
+    };
+
+    const uniqueVisitors = new Set();
+    const languageCount = {};
+
+    totalPageRange.forEach((entry) => {
+      const visitorId = entry.visitorId;
+      const lang = entry.language;
+
+      if (!uniqueVisitors.has(visitorId)) {
+        uniqueVisitors.add(visitorId);
+
+       
+        if (languageCount[lang]) {
+          languageCount[lang]++;
+        } else {
+          languageCount[lang] = 1;
+        }
+      }
+    });
+
+    result.languages = Object.keys(languageCount);
+    result.visitor = Object.values(languageCount);
+
+    return result;
+  } catch (error) {
+    console.log("🚀 ~ languagesCard ~ error:", error);
+    auditLogs.error("" || "User", "appServices", "languagesCard", error);
+    logger.error("" || "User", "appServices", "languagesCard", error);
   }
 };
 
@@ -434,5 +556,7 @@ module.exports = {
   lineCard,
   deviceCard,
   pageCard,
-  locationCard
+  locationCard,
+  sourcesCard,
+  languagesCard,
 };

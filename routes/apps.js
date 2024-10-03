@@ -11,6 +11,8 @@ const {
   deviceCard,
   pageCard,
   locationCard,
+  sourcesCard,
+  languagesCard,
 } = require("../services/appServices");
 
 const router = require("express").Router();
@@ -127,4 +129,38 @@ router.post("/location-card", async (req, res) => {
     logger.error("" || "User", "Apps", "POST /location-card", error);
   }
 });
+
+router.post("/sources-card", async (req, res) => {
+  try {
+    const { body, query } = req;
+    
+    const result = await sourcesCard(body, query);
+
+    return res
+      .status(_enum.HTTP_CODES.OK)
+      .json(Response.successResponse({ data: result }));
+  } catch (error) {
+    console.log("🚀 ~ /location-card ~ error:", error);
+    auditLogs.error("" || "User", "Apps", "POST /location-card", error);
+    logger.error("" || "User", "Apps", "POST /location-card", error);
+  }
+});
+
+
+router.post("/languages-card", async (req, res) => {
+  try {
+    const { body, query } = req;
+    
+    const result = await languagesCard(body, query);
+
+    return res
+      .status(_enum.HTTP_CODES.OK)
+      .json(Response.successResponse({ data: result }));
+  } catch (error) {
+    console.log("🚀 ~ /languages-card ~ error:", error);
+    auditLogs.error("" || "User", "Apps", "POST /languages-card", error);
+    logger.error("" || "User", "Apps", "POST /languages-card", error);
+  }
+});
+
 module.exports = router;
