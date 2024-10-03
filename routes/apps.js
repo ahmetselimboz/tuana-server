@@ -10,6 +10,7 @@ const {
   lineCard,
   deviceCard,
   pageCard,
+  locationCard,
 } = require("../services/appServices");
 
 const router = require("express").Router();
@@ -108,6 +109,22 @@ router.post("/page-card", async (req, res) => {
     console.log("🚀 ~ /device-card ~ error:", error);
     auditLogs.error("" || "User", "Apps", "POST /device-card", error);
     logger.error("" || "User", "Apps", "POST /device-card", error);
+  }
+});
+
+router.post("/location-card", async (req, res) => {
+  try {
+    const { body, query } = req;
+    
+    const result = await locationCard(body, query);
+
+    return res
+      .status(_enum.HTTP_CODES.OK)
+      .json(Response.successResponse({ data: result }));
+  } catch (error) {
+    console.log("🚀 ~ /location-card ~ error:", error);
+    auditLogs.error("" || "User", "Apps", "POST /location-card", error);
+    logger.error("" || "User", "Apps", "POST /location-card", error);
   }
 });
 module.exports = router;

@@ -369,9 +369,59 @@ const pageCard = async (body, query) => {
 
     return result;
   } catch (error) {
-    console.log("🚀 ~ deviceCard ~ error:", error);
-    auditLogs.error("" || "User", "appServices", "deviceCard", error);
-    logger.error("" || "User", "appServices", "deviceCard", error);
+    console.log("🚀 ~ pageCard ~ error:", error);
+    auditLogs.error("" || "User", "appServices", "pageCard", error);
+    logger.error("" || "User", "appServices", "pageCard", error);
+  }
+};
+
+const locationCard = async (body, query) => {
+  try {
+    const { firstdate, lastdate } = query;
+
+    const totalPageResult = await App.find({ appId: body.appId }).select(
+      "data"
+    );
+
+    const totalPage = totalPageResult[0]?.data.filter(
+      (item) => item.type === "page_view"
+    );
+
+    const totalPageRange = await filterVisitorsByDate(
+      totalPage,
+      firstdate,
+      lastdate
+    );
+
+
+    const uniqueVisitors = new Set();
+    const countriesData = {};
+
+    totalPageRange.forEach((entry) => { 
+      const country = entry.location.country;
+      const visitorId = entry.visitorId;
+      if (country  && visitorId && !uniqueVisitors.has(visitorId)) {
+        uniqueVisitors.add(visitorId); 
+  
+        if (countriesData[country]) {
+          countriesData[country]++;
+        } else {
+          countriesData[country] = 1;
+        }
+      }
+    });
+  
+    const locationData = Object.entries(countriesData).map(([country, visitor]) => ({ country, visitor }));
+
+    const result = {
+      totalLocationVisitor: locationData
+    };
+
+    return result;
+  } catch (error) {
+    console.log("🚀 ~ locationCard ~ error:", error);
+    auditLogs.error("" || "User", "appServices", "locationCard", error);
+    logger.error("" || "User", "appServices", "locationCard", error);
   }
 };
 
@@ -384,4 +434,5 @@ module.exports = {
   lineCard,
   deviceCard,
   pageCard,
+  locationCard
 };
