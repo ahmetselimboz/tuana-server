@@ -1,7 +1,7 @@
 module.exports = {
   PORT: process.env.PORT || "3000",
   LOG_LEVEL: process.env.LOG_LEVEL || "debug",
-  CORS_ENABLED: process.env.CORS_ENABLED || false,
+  CORS_ENABLED: process.env.CORS_ENABLED || "false",
   NODE_ENV: process.env.NODE_ENV || "debug",
   MONGODB_CONNECTION_STRING:
     process.env.MONGODB_CONNECTION_STRING ||

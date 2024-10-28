@@ -10,8 +10,9 @@ var indexRouter = require("./routes/index");
 const { CORS_ENABLED, ALLOWED_DOMAINS } = require("./config/environments");
 
 var app = express();
+console.log("🚀 ~ CORS_ENABLED:", CORS_ENABLED)
 
-if (CORS_ENABLED) {
+if (CORS_ENABLED == true) {
   const allowedDomains = ALLOWED_DOMAINS.split(",");
 
   const corsOptions = {
