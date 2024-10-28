@@ -2,6 +2,8 @@ const App = require("../db/models/App");
 const logger = require("../lib/logger/logger");
 const auditLogs = require("../lib/auditLogs");
 const moment = require("moment");
+const CustomError = require("../lib/error");
+const _enum = require("../config/enum");
 
 const data = [
   { referrer: "http://localhost:3000/analytics?id=TNAKLYTP" },
@@ -62,19 +64,17 @@ const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
 
 const saveTrackEvent = async (io, socket, data) => {
   try {
-    const result = await App.findOne({ appId: data.appId });
-
+    const result = await App.findOne({ appId: data.appId,  });
+    
     if (!result) {
-      await new App({
-        userId: "#",
-        appId: data.appId,
-        type: "web",
-        title: "www.tuanalytics.com",
-        data: [],
-      }).save();
+      throw new CustomError(
+        _enum.HTTP_CODES.INT_SERVER_ERROR,
+        "/saveTrackEvent Error",
+        "Couldn't find app "
+      );
     }
 
-    //console.log("🚀 ~ socket.on ~ data:", data);
+    console.log("🚀 ~ socket.on ~ data:", data);
     await App.findOneAndUpdate(
       { appId: data.appId },
       {
@@ -322,7 +322,11 @@ const lineCard = async (body, query) => {
 
 const deviceCard = async (body, query) => {
   try {
-    const { firstdate, lastdate } = query;
+    let { firstdate, lastdate } = query;
+    // console.log("old lastdate: ",lastdate);
+    // firstdate = new Date(firstdate).toString()
+    // lastdate = new Date(lastdate)
+    // console.log("new lastdate: ",lastdate);
 
     const totalPageResult = await App.find({ appId: body.appId }).select(
       "data"
@@ -466,7 +470,7 @@ const sourcesCard = async (body, query) => {
     );
 
     const referrerCounts = {};
-    console.log(totalPageRange.length);
+    
     totalPageRange.forEach((item) => {
       const domain = getDomainFromReferrer(item.referrer);
 

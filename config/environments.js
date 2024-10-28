@@ -7,7 +7,8 @@ module.exports = {
     process.env.MONGODB_CONNECTION_STRING ||
     "mongodb://127.0.0.1:27017/TuanaDB",
   JWT: {
-    SECRET: process.env.JWT_SECRET || "123456",
+    SECRET: process.env.JWT_SECRET || "pdCmaCtZg5b24F7IhLMquTF1BcORCEBM1fBIVSb1",
+
     EXPIRE_TIME: !isNaN(parseInt(process.env.TOKEN_EXPIRE_TIME))
       ? parseInt(process.env.TOKEN_EXPIRE_TIME)
       : 24 * 60 * 60, // 86400
@@ -31,6 +32,9 @@ module.exports = {
 
   DOMAIN: process.env.DOMAIN || "http://localhost",
 
+  WEB_SITE_URL: process.env.WEB_SITE_URL || "http://localhost:3000",
+
   MINIO_BUCKET_NAME: process.env.MINIO_BUCKET_NAME || "mybucket",
+  
   ALLOWED_DOMAINS: process.env.ALLOWED_DOMAINS
 };

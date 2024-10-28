@@ -17,10 +17,31 @@ const Schema = mongoose.Schema(
       trim: true,
       required: true,
     },
-    title: {
+    project_name: {
       type: String,
       trim: true,
       required: true,
+    },
+    pin: {
+      type: Boolean,
+      trim: true,
+      required: true,
+      default: false,
+    },
+    active:{
+      type: Boolean,
+      trim: true,
+      required: true,
+      default: false,
+    },
+    timezone:{
+      type: String,
+      trim: true,
+    },
+    domain:{
+      type:String,
+      trim:true,
+      default:null,
     },
     data: [
       {
@@ -129,13 +150,13 @@ const Schema = mongoose.Schema(
         new: {
           type: Boolean,
           trim: true,
-          default: false
+          default: false,
         },
-        date:{
-          type:Date,
+        date: {
+          type: Date,
           trim: true,
-          default: new Date()
-        }
+          default: new Date(),
+        },
       },
     ],
   },

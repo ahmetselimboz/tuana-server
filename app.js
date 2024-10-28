@@ -23,11 +23,17 @@ if (CORS_ENABLED) {
         callback(new Error("Not allowed by CORS"));
       }
     },
+    credentials: true,
   };
 
   app.use(cors(corsOptions));
 } else {
-  app.use(cors());
+  app.use(
+    cors({
+      origin: "http://localhost:3000", 
+      credentials: true, 
+    })
+  );
 }
 
 // view engine setup

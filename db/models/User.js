@@ -6,11 +6,13 @@ const Schema = mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      default: "#",
     },
     surname: {
       type: String,
       required: true,
       trim: true,
+      default: "#",
     },
     email: {
       type: String,
@@ -26,9 +28,30 @@ const Schema = mongoose.Schema(
       type: String,
       trim: true,
     },
+    email_is_active: {
+      type: Boolean,
+      trim: true,
+      default: false,
+    },
+    new: {
+      type: Boolean,
+      trim: true,
+      default: true,
+    },
+    mobile_new: {
+      type: Boolean,
+      trim: true,
+      default: true,
+    },
+    plans: {
+      type: String,
+      trim: true,
+      required: true,
+      default:"#"
+    },
     apps: [
       {
-        id: {
+        appId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "App",
         },
