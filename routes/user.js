@@ -183,6 +183,9 @@ router.get("/email-confirmed", async (req, res, next) => {
 router.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    console.log("🚀 ~ router.post ~ password:", password);
+    console.log("🚀 ~ router.post ~ email:", email);
+
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -211,7 +214,7 @@ router.post("/login", async (req, res, next) => {
     }
 
     const accessToken = jwt.sign({ id: user._id }, config.JWT.SECRET, {
-      expiresIn: "15m",
+      expiresIn: "30m",
     });
 
     const refreshToken = jwt.sign({ id: user._id }, config.JWT.SECRET, {
@@ -227,10 +230,12 @@ router.post("/login", async (req, res, next) => {
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      maxAge: 15 * 60 * 1000,
+      secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production
+      maxAge: 30 * 60 * 1000,
     });
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -270,13 +275,13 @@ router.post("/refresh-token", async (req, res, next) => {
     const decoded = jwt.verify(refreshToken, config.JWT.SECRET);
 
     const newAccessToken = jwt.sign({ id: decoded.id }, config.JWT.SECRET, {
-      expiresIn: "15m",
+      expiresIn: "30m",
     });
 
     // Yeni access token'ı cookie'ye ekle
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      maxAge: 15 * 60 * 1000,
+      maxAge: 30 * 60 * 1000,
     });
 
     return res
@@ -453,7 +458,6 @@ router.post("/verify", async (req, res, next) => {
   try {
     const { appId, domain } = req.body;
     const refreshToken = req.cookies.refreshToken;
-    console.log("🚀 ~ router.post ~ body:", req.body);
 
     // const findApp = await App.findOne({ appId, domain });
 
@@ -568,7 +572,7 @@ router.post("/toggle-pin", async (req, res, next) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     const { body } = req;
-   
+
     const findRefreshToken = await RefreshToken.findOne({
       token: refreshToken,
     });
@@ -579,7 +583,7 @@ router.post("/toggle-pin", async (req, res, next) => {
     });
 
     const app = await App.findOneAndUpdate(
-      { appId:body.appId },
+      { appId: body.appId },
       { pin: !findApp.pin },
       { new: true }
     );
@@ -590,24 +594,21 @@ router.post("/toggle-pin", async (req, res, next) => {
           message: "Pinned!",
         })
       );
-    }else if(!app.pin){
+    } else if (!app.pin) {
       return res.status(_enum.HTTP_CODES.OK).json(
         Response.successResponse({
           status: true,
           message: "Pin removed!",
         })
       );
-    }else{
+    } else {
       throw new CustomError(
         _enum.HTTP_CODES.INT_SERVER_ERROR,
         "/toggle-pin Error",
         "Try again!"
       );
     }
-
- 
   } catch (error) {
-    
     auditLogs.error("" || "User", "user-route", "/toggle-pin", error);
     logger.error("" || "User", "user-route", "/toggle-pin", error);
     res
