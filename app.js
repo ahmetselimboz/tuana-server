@@ -16,10 +16,11 @@ if (CORS_ENABLED) {
 
   const corsOptions = {
     origin: (origin, callback) => {
+      console.log("🚀 ~ origin:", origin);
       if (origin !== undefined || allowedDomains.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        console.log("🚀 ~ origin:", origin);
+        console.log("🚀 ~ CORS:", "Not allowed by CORS");
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -30,8 +31,8 @@ if (CORS_ENABLED) {
 } else {
   app.use(
     cors({
-      origin: "http://localhost:3000", 
-      credentials: true, 
+      origin: "*",
+      credentials: true,
     })
   );
 }
