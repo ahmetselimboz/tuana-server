@@ -189,28 +189,23 @@ router.post("/login", async (req, res, next) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      throw new CustomError(
-        _enum.HTTP_CODES.INT_SERVER_ERROR,
-        "/login Error",
-        "User couldn't find!"
-      );
+      return res
+      .status(_enum.HTTP_CODES.OK)
+      .json(Response.serverResponse({ message: "User couldn't find!" }));
     }
 
     if (user && user.email_is_active == false) {
-      throw new CustomError(
-        _enum.HTTP_CODES.INT_SERVER_ERROR,
-        "/login Error",
-        "Email not confirmed! Please check your email box"
-      );
+
+      return res
+      .status(_enum.HTTP_CODES.OK)
+      .json(Response.serverResponse({ message: "Email not confirmed! Please check your email box" }));
     }
     const checkPassword = bcrypt.compareSync(password, user.password);
 
     if (!checkPassword) {
-      throw new CustomError(
-        _enum.HTTP_CODES.INT_SERVER_ERROR,
-        "/login Error",
-        "Wrong password!"
-      );
+      return res
+        .status(_enum.HTTP_CODES.OK)
+        .json(Response.serverResponse({ message: "Wrong password!" }));
     }
 
     const accessToken = jwt.sign({ id: user._id }, config.JWT.SECRET, {
