@@ -76,8 +76,6 @@ async function checkTrackingScript(appId, domain) {
 
     await browser.close();
 
-    console.log("🚀 ~ checkTrackingScript ~ hasDomainTrack:", hasDomainTrack);
-    console.log("🚀 ~ checkTrackingScript ~ hasConfigTrack:", hasConfigTrack);
     // Tüm koşullar sağlanıyorsa script doğru eklenmiştir
     return hasTrackingScript && hasConfigTrack && hasDomainTrack;
   } catch (error) {
@@ -94,10 +92,11 @@ router.post("/sign-up", async (req, res) => {
     const exist = await userExist(body.data.email);
 
     if (exist) {
-      throw new CustomError(
-        _enum.HTTP_CODES.INT_SERVER_ERROR,
-        "/sign-up Error",
-        "User Already Exist!"
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "User Already Exist!",
+        })
       );
     }
 
@@ -109,11 +108,12 @@ router.post("/sign-up", async (req, res) => {
     });
 
     if (createdUser) {
-      return res
-        .status(_enum.HTTP_CODES.CREATED)
-        .json(
-          Response.successResponse({ message: "Confirmation email sent!" })
-        );
+      return res.status(_enum.HTTP_CODES.CREATED).json(
+        Response.successResponse({
+          code: _enum.HTTP_CODES.OK,
+          message: "Confirmation email sent!",
+        })
+      );
     }
 
     throw new CustomError(
@@ -122,8 +122,95 @@ router.post("/sign-up", async (req, res) => {
       "Something went wrong!"
     );
   } catch (error) {
+    console.log("🚀 ~ router.post ~ error:", error);
     auditLogs.error("" || "User", "user-route", "/sign-up", error);
     logger.error("" || "User", "user-route", "/sign-up", error);
+    res
+      .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
+      .json(Response.errorResponse(error));
+  }
+});
+
+router.post("/google-sign-up", async (req, res) => {
+  try {
+    const { body } = req;
+    const user = await User.findOne({ email: body.data.email });
+
+    if (user) {
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "User Already Exist!",
+          user: user.id,
+        })
+      );
+    }
+
+    const createdUser = await createUser({
+      email: body.data.email,
+      password: body.data.password,
+      name: body.data.name,
+      surname: body.data.surname,
+      email_is_active: true,
+      provider: body.data.provider,
+    });
+
+    if (createdUser) {
+      return res.status(_enum.HTTP_CODES.CREATED).json(
+        Response.successResponse({
+          code: _enum.HTTP_CODES.OK,
+          message: "Logged In!",
+          user: createdUser.id,
+        })
+      );
+    }
+
+    throw new CustomError(
+      _enum.HTTP_CODES.INT_SERVER_ERROR,
+      "/google-sign-up Error",
+      "Something went wrong!"
+    );
+  } catch (error) {
+    console.log("🚀 ~ router.post ~ error:", error);
+    auditLogs.error("" || "User", "user-route", "/google-sign-up", error);
+    logger.error("" || "User", "user-route", "/google-sign-up", error);
+    res
+      .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
+      .json(Response.errorResponse(error));
+  }
+});
+
+router.post("/save-token", async (req, res) => {
+  try {
+    const { token, userId } = req.body;
+    console.log("🚀 ~ router.post ~ req.body:", req.body);
+
+    const findToken = await RefreshToken.findOne({ token });
+    if (findToken) {
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "Already Exist!",
+        })
+      );
+    }
+
+    await RefreshToken.create({
+      token: token,
+      userId: userId,
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 gün
+    });
+
+    return res.status(_enum.HTTP_CODES.CREATED).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        message: "Saved!",
+      })
+    );
+  } catch (error) {
+    console.log("🚀 ~ router.post ~ error:", error);
+    auditLogs.error("" || "User", "user-route", "/save-token", error);
+    logger.error("" || "User", "user-route", "/save-token", error);
     res
       .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
       .json(Response.errorResponse(error));
@@ -135,19 +222,20 @@ router.get("/email-confirmed", async (req, res, next) => {
     const token = req.query.token;
 
     if (!token) {
-      throw new CustomError(
-        _enum.HTTP_CODES.INT_SERVER_ERROR,
-        "/email-confirmed Error",
-        "Token doesn't exist!"
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "Token doesn't exist!",
+        })
       );
     } else {
       const decoded = jwt.decode(token, config.JWT.SECRET);
 
       if (!decoded) {
-        throw new CustomError(
-          _enum.HTTP_CODES.INT_SERVER_ERROR,
-          "/email-confirmed Error",
-          "Token could be broken. Please sign up again!"
+        return res.status(_enum.HTTP_CODES.OK).json(
+          Response.serverResponse({
+            message: "Token could be broken. Please sign up again!",
+          })
         );
       } else {
         const userEmail = decoded.email;
@@ -159,15 +247,19 @@ router.get("/email-confirmed", async (req, res, next) => {
         );
 
         if (!emailConfirmed) {
-          throw new CustomError(
-            _enum.HTTP_CODES.INT_SERVER_ERROR,
-            "/email-confirmed Error",
-            "Email could not be confirmed. Please sign up again!"
+          return res.status(_enum.HTTP_CODES.OK).json(
+            Response.serverResponse({
+              code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+              message: "Email could not be confirmed. Please sign up again!",
+            })
           );
         } else {
-          return res
-            .status(_enum.HTTP_CODES.OK)
-            .json(Response.successResponse({ message: "Email Confirmed!" }));
+          return res.status(_enum.HTTP_CODES.OK).json(
+            Response.successResponse({
+              code: _enum.HTTP_CODES.OK,
+              message: "Email Confirmed!",
+            })
+          );
         }
       }
     }
@@ -189,23 +281,40 @@ router.post("/login", async (req, res, next) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(Response.serverResponse({ message: "User couldn't find!" }));
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "User couldn't find!",
+        })
+      );
     }
 
     if (user && user.email_is_active == false) {
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "Email not confirmed! Please check your email box",
+        })
+      );
+    }
 
-      return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(Response.serverResponse({ message: "Email not confirmed! Please check your email box" }));
+    if (user.provider !== "credentials") {
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "This account was created with other methods!",
+        })
+      );
     }
     const checkPassword = bcrypt.compareSync(password, user.password);
 
     if (!checkPassword) {
-      return res
-        .status(_enum.HTTP_CODES.OK)
-        .json(Response.serverResponse({ message: "Wrong password!" }));
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "Wrong password!",
+        })
+      );
     }
 
     const accessToken = jwt.sign({ id: user._id }, config.JWT.SECRET, {
@@ -234,9 +343,12 @@ router.post("/login", async (req, res, next) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ message: "Welcome!" }));
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        message: "Welcome!",
+      })
+    );
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/login", error);
     logger.error("" || "User", "user-route", "/login", error);
@@ -250,20 +362,22 @@ router.post("/refresh-token", async (req, res, next) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
-      throw new CustomError(
-        _enum.HTTP_CODES.INT_SERVER_ERROR,
-        "/refresh-token Error",
-        "Refresh token missing!"
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "Refresh token missing!",
+        })
       );
     }
 
     const tokenDocument = await RefreshToken.findOne({ token: refreshToken });
 
     if (!tokenDocument || tokenDocument.expires < Date.now()) {
-      throw new CustomError(
-        _enum.HTTP_CODES.INT_SERVER_ERROR,
-        "/refresh-token Error",
-        "Refresh token is invalid or expired!"
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "Refresh token is invalid or expired!",
+        })
       );
     }
 
@@ -279,9 +393,12 @@ router.post("/refresh-token", async (req, res, next) => {
       maxAge: 30 * 60 * 1000,
     });
 
-    return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ message: "New token created!" }));
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        message: "New token created!",
+      })
+    );
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/refresh-token", error);
     logger.error("" || "User", "user-route", "/refresh-token", error);
@@ -300,9 +417,12 @@ router.post("/logout", async (req, res, next) => {
     res.clearCookie("accessToken");
     res.clearCookie("refreshToken");
 
-    return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ message: "Where are you going?" }));
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        message: "Where are you going?",
+      })
+    );
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/logout", error);
     logger.error("" || "User", "user-route", "/logout", error);
@@ -321,12 +441,14 @@ router.get("/get-user", async (req, res, next) => {
     });
 
     const findUser = await User.findById(findRefreshToken.userId).select(
-      "_id name surname email new plans createdAt"
+      "_id name surname email new mobile_new plans provider createdAt"
     );
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ user: findUser }));
+      .json(
+        Response.successResponse({ code: _enum.HTTP_CODES.OK, user: findUser })
+      );
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/get-user", error);
     logger.error("" || "User", "user-route", "/get-user", error);
@@ -352,7 +474,9 @@ router.post("/set-plan", async (req, res, next) => {
     );
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ user: findUser }));
+      .json(
+        Response.successResponse({ code: _enum.HTTP_CODES.OK, user: findUser })
+      );
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/set-plan", error);
     logger.error("" || "User", "user-route", "/set-plan", error);
@@ -376,7 +500,9 @@ router.get("/get-user", async (req, res, next) => {
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ user: findUser }));
+      .json(
+        Response.successResponse({ code: _enum.HTTP_CODES.OK, user: findUser })
+      );
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/get-user", error);
     logger.error("" || "User", "user-route", "/get-user", error);
@@ -400,7 +526,7 @@ router.get("/get-appid", async (req, res, next) => {
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ appId }));
+      .json(Response.successResponse({ code: _enum.HTTP_CODES.OK, appId }));
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/get-appid", error);
     logger.error("" || "User", "user-route", "/get-appid", error);
@@ -439,7 +565,9 @@ router.post("/create-project", async (req, res, next) => {
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ status: true }));
+      .json(
+        Response.successResponse({ code: _enum.HTTP_CODES.OK, status: true })
+      );
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/create-project", error);
     logger.error("" || "User", "user-route", "/create-project", error);
@@ -467,16 +595,20 @@ router.post("/verify", async (req, res, next) => {
     const isExist = await checkTrackingScript(appId, domain);
 
     if (!isExist) {
-      throw new CustomError(
-        _enum.HTTP_CODES.INT_SERVER_ERROR,
-        "/verify",
-        "Make sure you paste the correct snippet!"
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "Make sure you paste the correct snippet!",
+        })
       );
     }
 
-    return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ message: "You can start!" }));
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        message: "You can start!",
+      })
+    );
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/verify", error);
     logger.error("" || "User", "user-route", "/verify", error);
@@ -492,8 +624,8 @@ router.post("/exist-domain", async (req, res, next) => {
 
     if (body.domain === "" || body.domain === null) {
       return res.status(_enum.HTTP_CODES.OK).json(
-        Response.successResponse({
-          status: false,
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
           message: "Domain is required!",
         })
       );
@@ -501,8 +633,8 @@ router.post("/exist-domain", async (req, res, next) => {
 
     if (/^(https?:\/\/|www\.)/i.test(body.domain)) {
       return res.status(_enum.HTTP_CODES.OK).json(
-        Response.successResponse({
-          status: false,
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
           message:
             "The domain must be a bare domain name only, it cannot contain 'https://', 'http://' or 'www'!",
         })
@@ -512,8 +644,8 @@ router.post("/exist-domain", async (req, res, next) => {
     const findApp = await App.findOne({ domain: body.domain });
     if (findApp) {
       return res.status(_enum.HTTP_CODES.OK).json(
-        Response.successResponse({
-          status: false,
+        Response.serverResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
           message: "This domain is already exist!",
         })
       );
@@ -521,7 +653,7 @@ router.post("/exist-domain", async (req, res, next) => {
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
-        status: true,
+        code: _enum.HTTP_CODES.OK,
         message: "Domain is available!",
       })
     );
@@ -551,9 +683,12 @@ router.get("/get-project-list", async (req, res, next) => {
       .select("apps")
       .sort({ createdAt: "desc" });
 
-    return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ list: findAppList }));
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        list: findAppList,
+      })
+    );
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/get-project-list", error);
     logger.error("" || "User", "user-route", "/get-project-list", error);
@@ -586,13 +721,14 @@ router.post("/toggle-pin", async (req, res, next) => {
     if (app.pin) {
       return res.status(_enum.HTTP_CODES.OK).json(
         Response.successResponse({
+          code: _enum.HTTP_CODES.OK,
           message: "Pinned!",
         })
       );
     } else if (!app.pin) {
       return res.status(_enum.HTTP_CODES.OK).json(
         Response.successResponse({
-          status: true,
+          code: _enum.HTTP_CODES.OK,
           message: "Pin removed!",
         })
       );

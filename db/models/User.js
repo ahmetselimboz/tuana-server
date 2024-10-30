@@ -28,6 +28,11 @@ const Schema = mongoose.Schema(
       type: String,
       trim: true,
     },
+    provider: {
+      type: String,
+      trim: true,
+      default:"credentials"
+    },
     email_is_active: {
       type: Boolean,
       trim: true,

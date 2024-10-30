@@ -74,7 +74,7 @@ const saveTrackEvent = async (io, socket, data) => {
       );
     }
 
-    console.log("🚀 ~ socket.on ~ data:", data);
+    // console.log("🚀 ~ socket.on ~ data:", data);
     await App.findOneAndUpdate(
       { appId: data.appId },
       {

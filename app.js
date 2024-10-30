@@ -12,13 +12,13 @@ const { CORS_ENABLED, ALLOWED_DOMAINS } = require("./config/environments");
 var app = express();
 console.log("🚀 ~ CORS_ENABLED:", CORS_ENABLED)
 
-if (CORS_ENABLED == true) {
+if (CORS_ENABLED === "true") {
   const allowedDomains = ALLOWED_DOMAINS.split(",");
 
   const corsOptions = {
     origin: (origin, callback) => {
       console.log("🚀 ~ origin:", origin);
-      if (origin !== undefined || allowedDomains.indexOf(origin) !== -1) {
+      if (!origin || allowedDomains.includes(origin)) {
         callback(null, true);
       } else {
         console.log("🚀 ~ CORS:", "Not allowed by CORS");
@@ -32,7 +32,7 @@ if (CORS_ENABLED == true) {
 } else {
   app.use(
     cors({
-      origin: "*",
+      origin: "http://localhost:3000",
       credentials: true,
     })
   );

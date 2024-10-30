@@ -8,7 +8,7 @@ const config = require("../config/environments");
 const userExist = async (email) => {
   try {
     const user = await User.findOne({ email });
-    console.log(user);
+
     if (user && user.email_is_active == true) {
       return true;
     }
