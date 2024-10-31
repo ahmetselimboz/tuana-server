@@ -390,6 +390,8 @@ router.post("/refresh-token", async (req, res, next) => {
     const newAccessToken = jwt.sign({ id: decoded.id }, config.JWT.SECRET, {
       expiresIn: "30m",
     });
+    
+    console.log("🚀 ~ router.post ~ process.env.WEB_SITE_URL:", process.env.WEB_SITE_URL)
 
     // Yeni access token'ı cookie'ye ekle
     res.cookie("accessToken", newAccessToken, {
@@ -413,6 +415,7 @@ router.post("/refresh-token", async (req, res, next) => {
       .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
       .json(Response.errorResponse(error));
   }
+    
 });
 
 router.post("/logout", async (req, res, next) => {
