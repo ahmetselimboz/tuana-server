@@ -331,19 +331,19 @@ router.post("/login", async (req, res, next) => {
       userId: user._id,
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 gün
     });
-    console.log("🚀 ~ router.post ~ process.env.WEB_SITE_URL:", process.env.WEB_SITE_URL)
+    console.log("🚀 ~ router.post ~ process.env.WEB_SITE_URL:", process.env.TOKEN_DOMAIN)
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production
       maxAge: 30 * 60 * 1000,
-      domain: `.${process.env.WEB_SITE_URL}`,
+      domain: `.${process.env.TOKEN_DOMAIN}`,
       path: "/",
     });
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain: `.${process.env.WEB_SITE_URL}`,
+      domain: `.${process.env.TOKEN_DOMAIN}`,
       path: "/",
     });
 
@@ -390,15 +390,14 @@ router.post("/refresh-token", async (req, res, next) => {
     const newAccessToken = jwt.sign({ id: decoded.id }, config.JWT.SECRET, {
       expiresIn: "30m",
     });
-    
-    console.log("🚀 ~ router.post ~ process.env.WEB_SITE_URL:", process.env.WEB_SITE_URL)
+  
 
     // Yeni access token'ı cookie'ye ekle
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production
       maxAge: 30 * 60 * 1000,
-      domain: `.${process.env.WEB_SITE_URL}`, 
+      domain: `.${process.env.TOKEN_DOMAIN}`, 
       path: "/",
     });
 
