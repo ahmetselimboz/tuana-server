@@ -275,8 +275,7 @@ router.get("/email-confirmed", async (req, res, next) => {
 router.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    console.log("🚀 ~ router.post ~ password:", password);
-    console.log("🚀 ~ router.post ~ email:", email);
+
 
     const user = await User.findOne({ email });
 
@@ -331,7 +330,7 @@ router.post("/login", async (req, res, next) => {
       userId: user._id,
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 gün
     });
-    console.log("🚀 ~ router.post ~ process.env.WEB_SITE_URL:", process.env.TOKEN_DOMAIN)
+ 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production

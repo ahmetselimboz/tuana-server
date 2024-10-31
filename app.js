@@ -18,6 +18,7 @@ if (CORS_ENABLED === "true") {
   const corsOptions = {
     origin: (origin, callback) => {
       console.log("🚀 ~ origin:", origin);
+      console.log("🚀 ~ allowedDomains.includes(origin):", allowedDomains.includes(origin));
       if (!origin || allowedDomains.includes(origin)) {
         callback(null, true);
       } else {
