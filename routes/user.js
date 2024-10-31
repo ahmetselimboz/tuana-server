@@ -331,7 +331,7 @@ router.post("/login", async (req, res, next) => {
       userId: user._id,
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 gün
     });
-
+    console.log("🚀 ~ router.post ~ process.env.WEB_SITE_URL:", process.env.WEB_SITE_URL)
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production
