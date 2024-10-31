@@ -336,11 +336,15 @@ router.post("/login", async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production
       maxAge: 30 * 60 * 1000,
+      sameSite: "None", // Cross-site erişim için None gerekli
+      path: "/",
     });
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "None", // Cross-site erişim için None gerekli
+      path: "/",
     });
 
     return res.status(_enum.HTTP_CODES.OK).json(
@@ -390,7 +394,10 @@ router.post("/refresh-token", async (req, res, next) => {
     // Yeni access token'ı cookie'ye ekle
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production
       maxAge: 30 * 60 * 1000,
+      sameSite: "None", // Cross-site erişim için None gerekli
+      path: "/",
     });
 
     return res.status(_enum.HTTP_CODES.OK).json(
