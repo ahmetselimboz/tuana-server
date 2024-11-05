@@ -267,14 +267,14 @@ router.post("/login", async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production
       maxAge: 30 * 60 * 1000,
-      // domain: `.${process.env.TOKEN_DOMAIN}`,
+      domain: `.${process.env.TOKEN_DOMAIN}`|| "localhost",
       path: "/",
     });
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      // domain: `.${process.env.TOKEN_DOMAIN}`,
+      domain: `.${process.env.TOKEN_DOMAIN}`|| "localhost",
       path: "/",
     });
 
