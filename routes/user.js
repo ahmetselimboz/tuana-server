@@ -12,8 +12,7 @@ const router = require("express").Router();
 const config = require("../config/environments");
 const { emailVerify } = require("../lib/sendMail");
 const App = require("../db/models/App");
-const axios = require("axios");
-const puppeteer = require("puppeteer");
+
 
 
 

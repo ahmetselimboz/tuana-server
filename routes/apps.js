@@ -16,6 +16,8 @@ const {
   sourcesCard,
   languagesCard,
 } = require("../services/appServices");
+const axios = require("axios");
+const puppeteer = require("puppeteer");
 
 const router = require("express").Router();
 function generateRandomCode() {
@@ -40,7 +42,7 @@ async function checkTrackingScript(appId, domain) {
     // `track.js` script'in yüklü olup olmadığını kontrol et
     const hasTrackingScript = await page.evaluate(() =>
       Array.from(document.scripts).some((script) =>
-        script.src.includes("/track.js")
+        script.src.includes("https://cdn.tuanalytics.com/script/track.js")
       )
     );
 
