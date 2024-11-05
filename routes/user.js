@@ -15,75 +15,7 @@ const App = require("../db/models/App");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
 
-function generateRandomCode() {
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return code;
-}
 
-async function checkTrackingScript(appId, domain) {
-  const browser = await puppeteer.launch();
-  const page = await browser.newPage();
-
-  try {
-    await page.goto(`http://${domain}`, { waitUntil: "networkidle2" });
-
-    // Sayfa yüklendikten sonra kısa bir bekleme süresi
-    await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 saniye bekleme süresi
-
-    // `track.js` script'in yüklü olup olmadığını kontrol et
-    const hasTrackingScript = await page.evaluate(() =>
-      Array.from(document.scripts).some((script) =>
-        script.src.includes("/track.js")
-      )
-    );
-
-    const dataLayerContent = await page.evaluate(() => {
-      return new Promise((resolve) => {
-        const checkDataLayer = () => {
-          if (window.dataLayer && window.dataLayer.length > 0) {
-            resolve(window.dataLayer);
-          }
-        };
-
-        // İlk kontrol
-        checkDataLayer();
-
-        // dataLayer güncellenirse tekrar kontrol etmek için MutationObserver kullan
-        const observer = new MutationObserver(checkDataLayer);
-        observer.observe(document, { childList: true, subtree: true });
-
-        // 5 saniye sonra otomatik olarak kapat
-        setTimeout(() => {
-          observer.disconnect();
-          resolve([]);
-        }, 5000);
-      });
-    });
-
-    console.log("dataLayer içeriği:", dataLayerContent);
-
-    // `dataLayer` ve track komutlarını kontrol et
-    const hasDomainTrack = dataLayerContent.some(
-      (event) => event[0] === "domain" && event[1] === domain
-    );
-    const hasConfigTrack = dataLayerContent.some(
-      (event) => event[0] === "config" && event[1] === appId
-    );
-
-    await browser.close();
-
-    // Tüm koşullar sağlanıyorsa script doğru eklenmiştir
-    return hasTrackingScript && hasConfigTrack && hasDomainTrack;
-  } catch (error) {
-    console.error("Hata oluştu:", error);
-    await browser.close();
-    return false;
-  }
-}
 
 router.post("/sign-up", async (req, res) => {
   try {
@@ -335,14 +267,14 @@ router.post("/login", async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production
       maxAge: 30 * 60 * 1000,
-      domain: `.${process.env.TOKEN_DOMAIN}`,
+      // domain: `.${process.env.TOKEN_DOMAIN}`,
       path: "/",
     });
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain: `.${process.env.TOKEN_DOMAIN}`,
+      // domain: `.${process.env.TOKEN_DOMAIN}`,
       path: "/",
     });
 
@@ -494,31 +426,31 @@ router.post("/set-plan", async (req, res, next) => {
   }
 });
 
-router.get("/get-user", async (req, res, next) => {
-  try {
-    const refreshToken = req.cookies.refreshToken;
+// router.get("/get-user", async (req, res, next) => {
+//   try {
+//     const refreshToken = req.cookies.refreshToken;
 
-    const findRefreshToken = await RefreshToken.findOne({
-      token: refreshToken,
-    });
+//     const findRefreshToken = await RefreshToken.findOne({
+//       token: refreshToken,
+//     });
 
-    const findUser = await User.findById(findRefreshToken.userId).select(
-      "_id name surname email new plans createdAt"
-    );
+//     const findUser = await User.findById(findRefreshToken.userId).select(
+//       "_id name surname email new plans createdAt"
+//     );
 
-    return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(
-        Response.successResponse({ code: _enum.HTTP_CODES.OK, user: findUser })
-      );
-  } catch (error) {
-    auditLogs.error("" || "User", "user-route", "/get-user", error);
-    logger.error("" || "User", "user-route", "/get-user", error);
-    res
-      .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
-      .json(Response.errorResponse(error));
-  }
-});
+//     return res
+//       .status(_enum.HTTP_CODES.OK)
+//       .json(
+//         Response.successResponse({ code: _enum.HTTP_CODES.OK, user: findUser })
+//       );
+//   } catch (error) {
+//     auditLogs.error("" || "User", "user-route", "/get-user", error);
+//     logger.error("" || "User", "user-route", "/get-user", error);
+//     res
+//       .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
+//       .json(Response.errorResponse(error));
+//   }
+// });
 
 
 
