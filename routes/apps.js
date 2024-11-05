@@ -34,7 +34,7 @@ async function checkTrackingScript(appId, domain) {
   const page = await browser.newPage();
 
   try {
-    await page.goto(`http://${domain}`, { waitUntil: "networkidle2" });
+    await page.goto(`https://${domain}`, { waitUntil: "networkidle2" });
 
     // Sayfa yüklendikten sonra kısa bir bekleme süresi
     await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 saniye bekleme süresi
