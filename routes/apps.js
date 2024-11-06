@@ -103,9 +103,12 @@ router.post("/new-visitor", async (req, res) => {
 
     const result = await newVisitors(body);
 
-    return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ visitor: result.length }));
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        visitor: result.length,
+      })
+    );
   } catch (error) {
     console.log("🚀 ~ /new-visitor ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /new-visitor", error);
@@ -120,7 +123,9 @@ router.post("/top-page", async (req, res) => {
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ url: result }));
+      .json(
+        Response.successResponse({ code: _enum.HTTP_CODES.OK, url: result })
+      );
   } catch (error) {
     console.log("🚀 ~ /top-page ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /top-page", error);
@@ -139,7 +144,12 @@ router.post("/avg-duration", async (req, res) => {
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ duration: result }));
+      .json(
+        Response.successResponse({
+          code: _enum.HTTP_CODES.OK,
+          duration: result,
+        })
+      );
   } catch (error) {
     console.log("🚀 ~ /avg-duration ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /avg-duration", error);
@@ -149,17 +159,17 @@ router.post("/avg-duration", async (req, res) => {
 
 router.post("/line-card", async (req, res) => {
   try {
-    const { body, query } = req;
+    const { body } = req;
+    const query = body.query;
     const result = await lineCard(body, query);
 
-    return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(
-        Response.successResponse({
-          visitor: result.result,
-          duration: result.duration,
-        })
-      );
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        visitor: result.result,
+        duration: result.duration,
+      })
+    );
   } catch (error) {
     console.log("🚀 ~ /line-card ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /line-card", error);
@@ -169,13 +179,15 @@ router.post("/line-card", async (req, res) => {
 
 router.post("/device-card", async (req, res) => {
   try {
-    const { body, query } = req;
-
+    const { body } = req;
+    const query = body.query;
     const result = await deviceCard(body, query);
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ data: result }));
+      .json(
+        Response.successResponse({ code: _enum.HTTP_CODES.OK, data: result })
+      );
   } catch (error) {
     console.log("🚀 ~ /device-card ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /device-card", error);
@@ -185,13 +197,15 @@ router.post("/device-card", async (req, res) => {
 
 router.post("/page-card", async (req, res) => {
   try {
-    const { body, query } = req;
-
+    const { body } = req;
+    const query = body.query;
     const result = await pageCard(body, query);
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ data: result }));
+      .json(
+        Response.successResponse({ code: _enum.HTTP_CODES.OK, data: result })
+      );
   } catch (error) {
     console.log("🚀 ~ /device-card ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /device-card", error);
@@ -201,13 +215,15 @@ router.post("/page-card", async (req, res) => {
 
 router.post("/location-card", async (req, res) => {
   try {
-    const { body, query } = req;
-
+    const { body } = req;
+    const query = body.query;
     const result = await locationCard(body, query);
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ data: result }));
+      .json(
+        Response.successResponse({ code: _enum.HTTP_CODES.OK, data: result })
+      );
   } catch (error) {
     console.log("🚀 ~ /location-card ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /location-card", error);
@@ -217,13 +233,15 @@ router.post("/location-card", async (req, res) => {
 
 router.post("/sources-card", async (req, res) => {
   try {
-    const { body, query } = req;
-
+    const { body } = req;
+    const query = body.query;
     const result = await sourcesCard(body, query);
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ data: result }));
+      .json(
+        Response.successResponse({ code: _enum.HTTP_CODES.OK, data: result })
+      );
   } catch (error) {
     console.log("🚀 ~ /location-card ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /location-card", error);
@@ -233,13 +251,15 @@ router.post("/sources-card", async (req, res) => {
 
 router.post("/languages-card", async (req, res) => {
   try {
-    const { body, query } = req;
-
+    const { body } = req;
+    const query = body.query;
     const result = await languagesCard(body, query);
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ data: result }));
+      .json(
+        Response.successResponse({ code: _enum.HTTP_CODES.OK, data: result })
+      );
   } catch (error) {
     console.log("🚀 ~ /languages-card ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /languages-card", error);
@@ -409,14 +429,12 @@ router.get("/get-project-list", async (req, res, next) => {
 
     const sortedApps = findAppList.apps.sort((a, b) => {
       if (a.appId.pin === b.appId.pin) {
-        return new Date(b.appId.createdAt) - new Date(a.appId.createdAt); 
+        return new Date(b.appId.createdAt) - new Date(a.appId.createdAt);
       }
-      return b.appId.pin - a.appId.pin; 
+      return b.appId.pin - a.appId.pin;
     });
 
     findAppList.apps = sortedApps;
-   
-  
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
@@ -468,10 +486,11 @@ router.post("/toggle-pin", async (req, res, next) => {
         })
       );
     } else {
-      throw new CustomError(
-        _enum.HTTP_CODES.INT_SERVER_ERROR,
-        "/toggle-pin Error",
-        "Try again!"
+      return res.status(_enum.HTTP_CODES.INT_SERVER_ERROR).json(
+        Response.successResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          message: "Try again!",
+        })
       );
     }
   } catch (error) {

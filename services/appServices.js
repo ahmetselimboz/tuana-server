@@ -155,7 +155,7 @@ const findTopPage = async (body) => {
     const urlCounts = findApp.data.reduce((acc, item) => {
       const visitDate = new Date(item.date);
       visitDate.setHours(0, 0, 0, 0);
-
+      
       if (visitDate.getTime() === today.getTime()) {
         const url = item.url;
         if (acc[url]) {
@@ -164,10 +164,12 @@ const findTopPage = async (body) => {
           acc[url] = 1;
         }
       }
-
+      
       return acc;
     }, {});
-
+    
+    console.log("🚀 ~ urlCounts ~ urlCounts:", urlCounts)
+    
     const mostVisitedUrl = Object.keys(urlCounts).reduce((a, b) =>
       urlCounts[a] > urlCounts[b] ? a : b
     );

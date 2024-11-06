@@ -425,39 +425,6 @@ router.post("/set-plan", async (req, res, next) => {
   }
 });
 
-// router.get("/get-user", async (req, res, next) => {
-//   try {
-//     const refreshToken = req.cookies.refreshToken;
-
-//     const findRefreshToken = await RefreshToken.findOne({
-//       token: refreshToken,
-//     });
-
-//     const findUser = await User.findById(findRefreshToken.userId).select(
-//       "_id name surname email new plans createdAt"
-//     );
-
-//     return res
-//       .status(_enum.HTTP_CODES.OK)
-//       .json(
-//         Response.successResponse({ code: _enum.HTTP_CODES.OK, user: findUser })
-//       );
-//   } catch (error) {
-//     auditLogs.error("" || "User", "user-route", "/get-user", error);
-//     logger.error("" || "User", "user-route", "/get-user", error);
-//     res
-//       .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
-//       .json(Response.errorResponse(error));
-//   }
-// });
-
-
-
-
-
-
-
-
 
 
 
