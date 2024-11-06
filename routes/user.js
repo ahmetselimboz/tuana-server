@@ -13,9 +13,6 @@ const config = require("../config/environments");
 const { emailVerify } = require("../lib/sendMail");
 const App = require("../db/models/App");
 
-
-
-
 router.post("/sign-up", async (req, res) => {
   try {
     const { body } = req;
@@ -207,7 +204,6 @@ router.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -261,19 +257,23 @@ router.post("/login", async (req, res, next) => {
       userId: user._id,
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 gün
     });
- 
+
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production
       maxAge: 30 * 60 * 1000,
-      domain: `.${process.env.TOKEN_DOMAIN}`|| "localhost",
+      domain: process.env.TOKEN_DOMAIN
+        ? `.${process.env.TOKEN_DOMAIN}`
+        : "localhost",
       path: "/",
     });
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain: `.${process.env.TOKEN_DOMAIN}`|| "localhost",
+      domain: process.env.TOKEN_DOMAIN
+        ? `.${process.env.TOKEN_DOMAIN}`
+        : "localhost",
       path: "/",
     });
 
@@ -320,14 +320,13 @@ router.post("/refresh-token", async (req, res, next) => {
     const newAccessToken = jwt.sign({ id: decoded.id }, config.JWT.SECRET, {
       expiresIn: "30m",
     });
-  
 
     // Yeni access token'ı cookie'ye ekle
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Ensures secure cookies in production
       maxAge: 30 * 60 * 1000,
-      domain: `.${process.env.TOKEN_DOMAIN}`, 
+      domain: `.${process.env.TOKEN_DOMAIN}`,
       path: "/",
     });
 
@@ -344,7 +343,6 @@ router.post("/refresh-token", async (req, res, next) => {
       .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
       .json(Response.errorResponse(error));
   }
-    
 });
 
 router.post("/logout", async (req, res, next) => {
@@ -424,9 +422,5 @@ router.post("/set-plan", async (req, res, next) => {
       .json(Response.errorResponse(error));
   }
 });
-
-
-
-
 
 module.exports = router;
