@@ -18,6 +18,7 @@ const {
 } = require("../services/appServices");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
+const TRACK_URL = process.env.TRACK_URL;
 
 const router = require("express").Router();
 function generateRandomCode() {
@@ -32,12 +33,15 @@ function generateRandomCode() {
 async function checkTrackingScript(appId, domain) {
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
   const page = await browser.newPage();
 
   try {
-    await page.goto(`https://${domain}`, { waitUntil: "networkidle2" });
+    await page.goto(
+      `${process.env.NODE_ENV == "production" ? "https:" : "http:"}//${domain}`,
+      { waitUntil: "networkidle2" }
+    );
 
     // Sayfa yüklendikten sonra kısa bir bekleme süresi
     await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 saniye bekleme süresi
@@ -45,7 +49,7 @@ async function checkTrackingScript(appId, domain) {
     // `track.js` script'in yüklü olup olmadığını kontrol et
     const hasTrackingScript = await page.evaluate(() =>
       Array.from(document.scripts).some((script) =>
-        script.src.includes("https://cdn.tuanalytics.com/script/track.js")
+        script.src.includes(TRACK_URL)
       )
     );
 
@@ -92,7 +96,6 @@ async function checkTrackingScript(appId, domain) {
     return false;
   }
 }
-
 
 router.post("/new-visitor", async (req, res) => {
   try {
@@ -151,7 +154,12 @@ router.post("/line-card", async (req, res) => {
 
     return res
       .status(_enum.HTTP_CODES.OK)
-      .json(Response.successResponse({ visitor: result.result, duration: result.duration }));
+      .json(
+        Response.successResponse({
+          visitor: result.result,
+          duration: result.duration,
+        })
+      );
   } catch (error) {
     console.log("🚀 ~ /line-card ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /line-card", error);
@@ -162,7 +170,7 @@ router.post("/line-card", async (req, res) => {
 router.post("/device-card", async (req, res) => {
   try {
     const { body, query } = req;
-    
+
     const result = await deviceCard(body, query);
 
     return res
@@ -178,7 +186,7 @@ router.post("/device-card", async (req, res) => {
 router.post("/page-card", async (req, res) => {
   try {
     const { body, query } = req;
-    
+
     const result = await pageCard(body, query);
 
     return res
@@ -194,7 +202,7 @@ router.post("/page-card", async (req, res) => {
 router.post("/location-card", async (req, res) => {
   try {
     const { body, query } = req;
-    
+
     const result = await locationCard(body, query);
 
     return res
@@ -210,7 +218,7 @@ router.post("/location-card", async (req, res) => {
 router.post("/sources-card", async (req, res) => {
   try {
     const { body, query } = req;
-    
+
     const result = await sourcesCard(body, query);
 
     return res
@@ -223,11 +231,10 @@ router.post("/sources-card", async (req, res) => {
   }
 });
 
-
 router.post("/languages-card", async (req, res) => {
   try {
     const { body, query } = req;
-    
+
     const result = await languagesCard(body, query);
 
     return res
@@ -384,7 +391,6 @@ router.post("/verify", async (req, res, next) => {
   }
 });
 
-
 router.get("/get-project-list", async (req, res, next) => {
   try {
     const refreshToken = req.cookies.refreshToken;
@@ -399,13 +405,23 @@ router.get("/get-project-list", async (req, res, next) => {
         path: "apps.appId",
         select: "appId type project_name pin active createdAt domain",
       })
-      .select("apps")
-      .sort({ createdAt: "desc" });
+      .select("apps");
+
+    const sortedApps = findAppList.apps.sort((a, b) => {
+      if (a.appId.pin === b.appId.pin) {
+        return new Date(b.appId.createdAt) - new Date(a.appId.createdAt); 
+      }
+      return b.appId.pin - a.appId.pin; 
+    });
+
+    findAppList.apps = sortedApps;
+   
+  
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
         code: _enum.HTTP_CODES.OK,
-        list: findAppList,
+        list: findAppList.apps,
       })
     );
   } catch (error) {
