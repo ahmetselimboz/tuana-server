@@ -45,7 +45,7 @@ async function checkTrackingScript(appId, domain) {
 
     // Sayfa yüklendikten sonra kısa bir bekleme süresi
     await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 saniye bekleme süresi
-
+    console.log("🚀 ~ router.post ~ TRACK_URL:", TRACK_URL);
     // `track.js` script'in yüklü olup olmadığını kontrol et
     const hasTrackingScript = await page.evaluate(() =>
       Array.from(document.scripts).some((script) =>
@@ -100,6 +100,7 @@ async function checkTrackingScript(appId, domain) {
 router.post("/new-visitor", async (req, res) => {
   try {
     const { body } = req;
+    
 
     const result = await newVisitors(body);
 

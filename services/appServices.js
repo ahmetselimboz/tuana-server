@@ -64,15 +64,22 @@ const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
 
 const saveTrackEvent = async (io, socket, data) => {
   try {
-    const result = await App.findOne({ appId: data.appId,  });
-    console.log("🚀 ~ saveTrackEvent ~ data:", data)
-    
+    const result = await App.findOne({ appId: data.appId });
+    console.log("🚀 ~ saveTrackEvent ~ data:", data);
+
     if (!result) {
-      throw new CustomError(
-        _enum.HTTP_CODES.INT_SERVER_ERROR,
-        "/saveTrackEvent Error",
-        "Couldn't find app "
-      );
+      // throw new CustomError(
+      //   _enum.HTTP_CODES.INT_SERVER_ERROR,
+      //   "/saveTrackEvent Error",
+      //   "Couldn't find app "
+      // );
+      // return res.status(_enum.HTTP_CODES.OK).json(
+      //   Response.serverResponse({
+      //     code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+      //     message: "Wrong password!",
+      //   })
+      // );
+      console.log("🚀 ~ saveTrackEvent ~ Couldn't find app!");
     }
 
     // console.log("🚀 ~ socket.on ~ data:", data);
@@ -155,7 +162,7 @@ const findTopPage = async (body) => {
     const urlCounts = findApp.data.reduce((acc, item) => {
       const visitDate = new Date(item.date);
       visitDate.setHours(0, 0, 0, 0);
-      
+
       if (visitDate.getTime() === today.getTime()) {
         const url = item.url;
         if (acc[url]) {
@@ -164,12 +171,12 @@ const findTopPage = async (body) => {
           acc[url] = 1;
         }
       }
-      
+
       return acc;
     }, {});
-    
-    console.log("🚀 ~ urlCounts ~ urlCounts:", urlCounts)
-    
+
+    console.log("🚀 ~ urlCounts ~ urlCounts:", urlCounts);
+
     const mostVisitedUrl = Object.keys(urlCounts).reduce((a, b) =>
       urlCounts[a] > urlCounts[b] ? a : b
     );
@@ -473,7 +480,7 @@ const sourcesCard = async (body, query) => {
     );
 
     const referrerCounts = {};
-    
+
     totalPageRange.forEach((item) => {
       const domain = getDomainFromReferrer(item.referrer);
 
@@ -521,7 +528,7 @@ const languagesCard = async (body, query) => {
 
     const result = {
       visitor: [],
-      languages: []
+      languages: [],
     };
 
     const uniqueVisitors = new Set();
@@ -534,7 +541,6 @@ const languagesCard = async (body, query) => {
       if (!uniqueVisitors.has(visitorId)) {
         uniqueVisitors.add(visitorId);
 
-       
         if (languageCount[lang]) {
           languageCount[lang]++;
         } else {
