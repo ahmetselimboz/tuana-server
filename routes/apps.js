@@ -5,6 +5,8 @@ const User = require("../db/models/User");
 const auditLogs = require("../lib/auditLogs");
 const logger = require("../lib/logger/logger");
 const Response = require("../lib/response");
+const config = require("../config/environments");
+
 const {
   findTopPage,
   newVisitors,
@@ -31,7 +33,7 @@ function generateRandomCode() {
 }
 
 async function checkTrackingScript(appId, domain) {
-  var TRACK_URL = process.env.TRACK_URL || "https://cdn.tuanalytics.com/script/track.js";
+
   const browser = await puppeteer.launch({
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -40,9 +42,13 @@ async function checkTrackingScript(appId, domain) {
 
   try {
     await page.goto(
-      `${process.env.NODE_ENV == "production" ? "https:" : "http:"}//${domain}`,
+      `https://${domain}`,
       { waitUntil: "networkidle2" }
     );
+    // await page.goto(
+    //   `http://${domain}`,
+    //   { waitUntil: "networkidle2" }
+    // );
 
     // Sayfa yüklendikten sonra kısa bir bekleme süresi
     await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 saniye bekleme süresi
@@ -50,7 +56,8 @@ async function checkTrackingScript(appId, domain) {
     // `track.js` script'in yüklü olup olmadığını kontrol et
     const hasTrackingScript = await page.evaluate(() =>
       Array.from(document.scripts).some((script) =>
-        script.src.includes(`${process.env.NODE_ENV == "production" ? "https://cdn.tuanalytics.com/script/track.js" : "/track.js"}`)
+        script.src.includes("https://cdn.tuanalytics.com/script/track.js")
+        //script.src.includes("/track.js")
       )
     );
 
