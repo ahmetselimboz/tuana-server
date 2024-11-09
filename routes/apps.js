@@ -18,7 +18,7 @@ const {
 } = require("../services/appServices");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
-var TRACK_URL = process.env.TRACK_URL || "https://cdn.tuanalytics.com/script/track.js";
+
 
 const router = require("express").Router();
 function generateRandomCode() {
@@ -31,6 +31,7 @@ function generateRandomCode() {
 }
 
 async function checkTrackingScript(appId, domain) {
+  var TRACK_URL = process.env.TRACK_URL || "https://cdn.tuanalytics.com/script/track.js";
   const browser = await puppeteer.launch({
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -49,7 +50,7 @@ async function checkTrackingScript(appId, domain) {
     // `track.js` script'in yüklü olup olmadığını kontrol et
     const hasTrackingScript = await page.evaluate(() =>
       Array.from(document.scripts).some((script) =>
-        script.src.includes(TRACK_URL)
+        script.src.includes(`${process.env.NODE_ENV == "production" ? "https://cdn.tuanalytics.com/script/track.js" : "/track.js"}`)
       )
     );
 
@@ -76,7 +77,7 @@ async function checkTrackingScript(appId, domain) {
       });
     });
 
-    console.log("dataLayer içeriği:", dataLayerContent);
+    //console.log("dataLayer içeriği:", dataLayerContent);
 
     // `dataLayer` ve track komutlarını kontrol et
     const hasDomainTrack = dataLayerContent.some(
