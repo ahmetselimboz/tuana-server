@@ -18,7 +18,7 @@ const {
 } = require("../services/appServices");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
-const TRACK_URL = process.env.TRACK_URL || "https://cdn.tuanalytics.com/script/track.js";
+var TRACK_URL = process.env.TRACK_URL || "https://cdn.tuanalytics.com/script/track.js";
 
 const router = require("express").Router();
 function generateRandomCode() {

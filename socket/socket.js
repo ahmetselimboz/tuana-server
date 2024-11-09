@@ -15,7 +15,7 @@ module.exports = (io) => {
         activeUsers[data.appId].push(socket.id);
         socket.join(data.appId);
         
-        io.to(data.appId).emit("activeUsers", activeUsers[data.appId].length);
+        io.to(data.appId).emit("activeUsers", activeUsers[data.appId]?.length);
 
         saveVisitor(data);
       } catch (error) {
@@ -35,7 +35,7 @@ module.exports = (io) => {
             (userId) => userId !== socket.id
           );
 
-          io.to(appId).emit("activeUsers", activeUsers[appId].length);
+          io.to(appId).emit("activeUsers", activeUsers[appId]?.length);
 
           if (activeUsers[appId].length === 0) {
             delete activeUsers[appId];
