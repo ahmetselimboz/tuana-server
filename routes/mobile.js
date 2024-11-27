@@ -47,8 +47,45 @@ router.get("/check-version", async (req, res, next) => {
       );
     }
   } catch (error) {
-    auditLogs.error("" || "User", "user-route", "/check-version", error);
-    logger.error("" || "User", "user-route", "/check-version", error);
+    auditLogs.error("" || "User", "mobile-route", "/check-version", error);
+    logger.error("" || "User", "mobile-route", "/check-version", error);
+    res
+      .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
+      .json(Response.errorResponse(error));
+  }
+});
+
+router.post("/onboarding", async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+
+    const findRefreshToken = await RefreshToken.findOne({
+      token: refreshToken,
+    });
+
+    const findUser = await User.findByIdAndUpdate(findRefreshToken.userId, {mobile_new: false}, {
+      new: true,
+    });
+
+    if (findUser?.mobile_new == false) {
+  
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.successResponse({
+          code: _enum.HTTP_CODES.OK,
+          status:true
+        })
+      );
+    } else {
+      return res.status(_enum.HTTP_CODES.OK).json(
+        Response.successResponse({
+          code: _enum.HTTP_CODES.INT_SERVER_ERROR,
+          status:false
+        })
+      );
+    }
+  } catch (error) {
+    auditLogs.error("" || "User", "mobile-route", "/onboarding", error);
+    logger.error("" || "User", "mobile-route", "/onboarding", error);
     res
       .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
       .json(Response.errorResponse(error));

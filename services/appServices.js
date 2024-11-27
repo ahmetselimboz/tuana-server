@@ -284,6 +284,9 @@ const lineCard = async (body, query) => {
       firstdate,
       lastdate
     );
+    const timezone = await App.find({ appId: body.appId }).select(
+      "timezone"
+    );
 
     const totalPageResult = await App.find({ appId: body.appId }).select(
       "data"
@@ -312,6 +315,7 @@ const lineCard = async (body, query) => {
     });
 
     const result = {
+      timezone: timezone,
       totalVisitor: totalVisitorResult,
       totalPage: totalPageRange,
       newVisitors: newVisitorsResult,
@@ -319,6 +323,7 @@ const lineCard = async (body, query) => {
     };
 
     const duration = {
+      timezone: timezone,
       calculateDuration: `${calculateDuration.minutes}`,
     };
 
