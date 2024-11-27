@@ -57,18 +57,23 @@ router.get("/check-version", async (req, res, next) => {
 
 router.post("/onboarding", async (req, res, next) => {
   try {
+    console.log("Tetiklendiiii!!!")
     const refreshToken = req.cookies.refreshToken;
-
+    console.log("🚀 ~ router.post ~ refreshToken:", refreshToken)
     const findRefreshToken = await RefreshToken.findOne({
       token: refreshToken,
     });
 
-    const findUser = await User.findByIdAndUpdate(findRefreshToken.userId, {mobile_new: false}, {
+    console.log("🚀 ~ router.post ~ findRefreshToken:", findRefreshToken)
+    
+    const findUser = await User.findByIdAndUpdate(findRefreshToken?.userId, {mobile_new: false}, {
       new: true,
     });
 
+    console.log("🚀 ~ router.post ~ findUser:", findUser)
+
     if (findUser?.mobile_new == false) {
-  
+      console.log("Mobile_New false!!!")
       return res.status(_enum.HTTP_CODES.OK).json(
         Response.successResponse({
           code: _enum.HTTP_CODES.OK,
@@ -76,6 +81,7 @@ router.post("/onboarding", async (req, res, next) => {
         })
       );
     } else {
+      console.log("Mobile_New true!!!")
       return res.status(_enum.HTTP_CODES.OK).json(
         Response.successResponse({
           code: _enum.HTTP_CODES.INT_SERVER_ERROR,
@@ -91,5 +97,8 @@ router.post("/onboarding", async (req, res, next) => {
       .json(Response.errorResponse(error));
   }
 });
+
+   
+
 
 module.exports = router;

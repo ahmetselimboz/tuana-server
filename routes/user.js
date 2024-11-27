@@ -251,12 +251,13 @@ router.post("/login", async (req, res, next) => {
       expiresIn: "7d",
     });
 
-    // Refresh token'ı veritabanına kaydet
     const tokenDocument = await RefreshToken.create({
       token: refreshToken,
       userId: user._id,
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 gün
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 
     });
+
+    console.log("🚀 ~ router.post ~ tokenDocument:", tokenDocument)
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
@@ -283,6 +284,7 @@ router.post("/login", async (req, res, next) => {
         message: "Welcome!",
       })
     );
+    
   } catch (error) {
     auditLogs.error("" || "User", "user-route", "/login", error);
     logger.error("" || "User", "user-route", "/login", error);
@@ -291,6 +293,7 @@ router.post("/login", async (req, res, next) => {
       .json(Response.errorResponse(error));
   }
 });
+
 
 router.post("/refresh-token", async (req, res, next) => {
   try {

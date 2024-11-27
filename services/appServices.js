@@ -65,7 +65,7 @@ const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
 const saveTrackEvent = async (io, socket, data) => {
   try {
     const result = await App.findOne({ appId: data.appId });
-    console.log("🚀 ~ saveTrackEvent ~ data:", data);
+    //console.log("🚀 ~ saveTrackEvent ~ data:", data);
 
     if (!result) {
       // throw new CustomError(
