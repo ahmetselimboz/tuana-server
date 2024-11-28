@@ -175,8 +175,7 @@ router.post("/line-card", async (req, res) => {
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
         code: _enum.HTTP_CODES.OK,
-        visitor: result.result,
-        duration: result.duration,
+        data: result.result,
       })
     );
   } catch (error) {

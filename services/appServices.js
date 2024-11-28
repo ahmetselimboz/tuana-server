@@ -175,7 +175,7 @@ const findTopPage = async (body) => {
       return acc;
     }, {});
 
-    console.log("🚀 ~ urlCounts ~ urlCounts:", urlCounts);
+    //console.log("🚀 ~ urlCounts ~ urlCounts:", urlCounts);
 
     const mostVisitedUrl = Object.keys(urlCounts).reduce((a, b) =>
       urlCounts[a] > urlCounts[b] ? a : b
@@ -274,23 +274,31 @@ const calculateSessionDuration = async (body) => {
 const lineCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
+    console.log("🚀 ~ lineCard ~ lastdate:", lastdate)
+    console.log("🚀 ~ lineCard ~ firstdate:", firstdate)
 
     const totalVisitor = await App.findOne({ appId: body.appId }).select(
-      "visitor"
+      "visitor.date visitor._id visitor.new"
     );
+
 
     const totalVisitorResult = filterVisitorsByDate(
       totalVisitor.visitor,
       firstdate,
       lastdate
     );
-    const timezone = await App.find({ appId: body.appId }).select(
+    
+    console.log("🚀 ~ lineCard ~ totalVisitorResult:", totalVisitorResult)
+   
+    const timezone = await App.findOne({ appId: body.appId }).select(
       "timezone"
     );
 
+
     const totalPageResult = await App.find({ appId: body.appId }).select(
-      "data"
+      "data.type data.date date._id"
     );
+    
 
     const totalPage = totalPageResult[0]?.data.filter(
       (item) => item.type === "page_view"
@@ -308,26 +316,15 @@ const lineCard = async (body, query) => {
       lastdate
     );
 
-    const calculateDuration = await calculateSessionDuration({
-      appId: body.appId,
-      firstdate,
-      lastdate,
-    });
-
     const result = {
-      timezone: timezone,
+      timezone: timezone.timezone,
       totalVisitor: totalVisitorResult,
       totalPage: totalPageRange,
       newVisitors: newVisitorsResult,
-      calculateDuration: `${calculateDuration.minutes}m ${calculateDuration.seconds}s`,
+     
     };
 
-    const duration = {
-      timezone: timezone,
-      calculateDuration: `${calculateDuration.minutes}`,
-    };
-
-    return { result, duration };
+    return { result };
   } catch (error) {
     console.log("🚀 ~ lineCard ~ error:", error);
     auditLogs.error("" || "User", "appServices", "lineCard", error);
