@@ -15,7 +15,7 @@ module.exports = (io) => {
         activeUsers[data.appId].push(socket.id);
         socket.join(data.appId);
         
-        console.log("🚀 ~ socket.on ~ activeUsers:", activeUsers)
+        //console.log("🚀 ~ socket.on ~ activeUsers:", activeUsers)
 
         io.to(data.appId).emit("activeUsers", activeUsers[data.appId]?.length);
 

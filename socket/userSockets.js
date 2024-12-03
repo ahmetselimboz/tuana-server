@@ -7,7 +7,7 @@ module.exports = (io, socket, activeUsers) => {
   socket.on("getActiveUsers", async (appId) => {
     try {
       
-      console.log("🚀 ~ activeUsers:", activeUsers)
+      //console.log("🚀 ~ activeUsers:", activeUsers)
       io.to(appId).emit("activeUsers", activeUsers[appId]?.length);
     } catch (error) {
       console.log("🚀 ~ socket - getActiveUsers ~ error:", error);
@@ -18,7 +18,7 @@ module.exports = (io, socket, activeUsers) => {
 
   socket.on("joinRoom", (appId) => {
     try {
-      console.log("🚀 ~ socket.on ~ appId:", appId)
+      //console.log("🚀 ~ socket.on ~ appId:", appId)
       socket.join(appId);
     } catch (error) {
       console.log("🚀 ~ socket - joinRoom ~ error:", error);

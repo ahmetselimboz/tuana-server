@@ -20,7 +20,7 @@ const {
 } = require("../services/appServices");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
-
+const getPlatormData = require("../lib/playwright");
 
 const router = require("express").Router();
 function generateRandomCode() {
@@ -33,7 +33,6 @@ function generateRandomCode() {
 }
 
 async function checkTrackingScript(appId, domain) {
-
   const browser = await puppeteer.launch({
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -41,10 +40,7 @@ async function checkTrackingScript(appId, domain) {
   const page = await browser.newPage();
 
   try {
-    await page.goto(
-      `https://${domain}`,
-      { waitUntil: "networkidle2" }
-    );
+    await page.goto(`https://${domain}`, { waitUntil: "networkidle2" });
     // await page.goto(
     //   `http://${domain}`,
     //   { waitUntil: "networkidle2" }
@@ -52,11 +48,12 @@ async function checkTrackingScript(appId, domain) {
 
     // Sayfa yüklendikten sonra kısa bir bekleme süresi
     await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 saniye bekleme süresi
-   
+
     // `track.js` script'in yüklü olup olmadığını kontrol et
     const hasTrackingScript = await page.evaluate(() =>
-      Array.from(document.scripts).some((script) =>
-        script.src.includes("https://cdn.tuanalytics.com/script/track.js")
+      Array.from(document.scripts).some(
+        (script) =>
+          script.src.includes("https://cdn.tuanalytics.com/script/track.js")
         //script.src.includes("/track.js")
       )
     );
@@ -108,7 +105,6 @@ async function checkTrackingScript(appId, domain) {
 router.post("/new-visitor", async (req, res) => {
   try {
     const { body } = req;
-    
 
     const result = await newVisitors(body);
 
@@ -151,14 +147,12 @@ router.post("/avg-duration", async (req, res) => {
       lastdate: new Date(),
     });
 
-    return res
-      .status(_enum.HTTP_CODES.OK)
-      .json(
-        Response.successResponse({
-          code: _enum.HTTP_CODES.OK,
-          duration: result,
-        })
-      );
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        duration: result,
+      })
+    );
   } catch (error) {
     console.log("🚀 ~ /avg-duration ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /avg-duration", error);
@@ -170,6 +164,11 @@ router.post("/line-card", async (req, res) => {
   try {
     const { body } = req;
     const query = body.query;
+
+    console.log("Tet'klendiiii");
+
+    console.log("🚀 ~ lineCard ~ query:", query);
+
     const result = await lineCard(body, query);
 
     return res.status(_enum.HTTP_CODES.OK).json(
@@ -509,5 +508,7 @@ router.post("/toggle-pin", async (req, res, next) => {
       .json(Response.errorResponse(error));
   }
 });
+
+
 
 module.exports = router;
