@@ -177,12 +177,11 @@ const findTopPage = async (body) => {
 
     //console.log("🚀 ~ urlCounts ~ urlCounts:", urlCounts);
     const mostVisitedUrl = Object.keys(urlCounts).length
-    ? Object.keys(urlCounts).reduce((a, b) => 
-        urlCounts[a] > urlCounts[b] ? a : b
-      )
-    : null; 
-  
-    
+      ? Object.keys(urlCounts).reduce((a, b) =>
+          urlCounts[a] > urlCounts[b] ? a : b
+        )
+      : null;
+
     return mostVisitedUrl;
   } catch (error) {
     console.log("🚀 ~ findTopPage ~ error:", error);
@@ -276,32 +275,26 @@ const calculateSessionDuration = async (body) => {
 const lineCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
-   
-
-    
 
     const totalVisitor = await App.findOne({ appId: body.appId }).select(
       "visitor.date visitor._id visitor.new"
     );
-
 
     const totalVisitorResult = filterVisitorsByDate(
       totalVisitor.visitor,
       firstdate,
       lastdate
     );
-    
-    console.log("🚀 ~ lineCard ~ totalVisitorResult:", totalVisitorResult)
-   
+
+    //  console.log("🚀 ~ lineCard ~ totalVisitorResult:", totalVisitorResult)
+
     const timezone = await App.findOne({ appId: body.appId }).select(
       "timezone"
     );
 
-
     const totalPageResult = await App.find({ appId: body.appId }).select(
       "data.type data.date date._id"
     );
-    
 
     const totalPage = totalPageResult[0]?.data.filter(
       (item) => item.type === "page_view"
@@ -324,7 +317,6 @@ const lineCard = async (body, query) => {
       totalVisitor: totalVisitorResult,
       totalPage: totalPageRange,
       newVisitors: newVisitorsResult,
-     
     };
 
     return { result };
@@ -346,7 +338,7 @@ const deviceCard = async (body, query) => {
     const totalPageResult = await App.find({ appId: body.appId }).select(
       "data.userDevice data.date data.type"
     );
-   // console.log("🚀 ~ deviceCard ~ totalPageResult:", totalPageResult)
+    // console.log("🚀 ~ deviceCard ~ totalPageResult:", totalPageResult)
 
     const totalPage = totalPageResult[0]?.data.filter(
       (item) => item.type === "page_view"
@@ -357,7 +349,7 @@ const deviceCard = async (body, query) => {
       firstdate,
       lastdate
     );
-    console.log("🚀 ~ deviceCard ~ totalPageRange:", totalPageRange)
+
     // const result = {
     //   totalPage: totalPageRange,
     // };
@@ -523,17 +515,16 @@ const languagesCard = async (body, query) => {
       "data.language data.visitorId data.date data.type"
     );
 
-
     const totalPage = totalPageResult[0]?.data.filter(
       (item) => item.type === "page_view"
     );
-   
+
     const totalPageRange = await filterVisitorsByDate(
       totalPage,
       firstdate,
       lastdate
     );
-    
+
     const result = {
       uniqueVisitor: [],
       languages: [],

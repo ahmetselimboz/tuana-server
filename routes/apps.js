@@ -21,6 +21,7 @@ const {
 const axios = require("axios");
 const puppeteer = require("puppeteer");
 const getPlatormData = require("../lib/playwright");
+const AI = require("../db/models/Ai");
 
 const router = require("express").Router();
 function generateRandomCode() {
@@ -165,9 +166,9 @@ router.post("/line-card", async (req, res) => {
     const { body } = req;
     const query = body.query;
 
-    console.log("Tet'klendiiii");
+   
 
-    console.log("🚀 ~ lineCard ~ query:", query);
+   // console.log("🚀 ~ lineCard ~ query:", query);
 
     const result = await lineCard(body, query);
 
@@ -324,6 +325,31 @@ router.post("/create-project", async (req, res, next) => {
       },
       { new: true }
     );
+
+    const userInfo = await User.findOne({appId:appId})
+
+    const planValues = {
+      free: 5,
+      mini: 10,
+      pro: 20,
+      premium: 0
+    };
+
+    const tokenValues = {
+      free: 1024,
+      mini: 2048,
+      pro: 3072,
+      premium: 4096
+    };
+
+    const ai = await AI({
+      userId: findRefreshToken.userId,
+      appId: body.appId,
+      limitExist: userInfo.plans == "free" ? true : false,
+      limit:  planValues[userInfo.plans] ?? null,
+      wordLimit: tokenValues[userInfo.plans] ?? null,
+      ai_limit:  planValues[userInfo.plans] ?? null,
+    }).save()
 
     return res
       .status(_enum.HTTP_CODES.OK)
@@ -503,6 +529,28 @@ router.post("/toggle-pin", async (req, res, next) => {
   } catch (error) {
     auditLogs.error("" || "User", "apps-route", "/toggle-pin", error);
     logger.error("" || "User", "apps-route", "/toggle-pin", error);
+    res
+      .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
+      .json(Response.errorResponse(error));
+  }
+});
+
+router.post("/track-exit-event", async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    const { body } = req;
+
+    console.log("🚀 ~ Gelen Exit Event Verisi:", body);
+
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        message: "Pin removed!",
+      })
+    );
+  } catch (error) {
+    auditLogs.error("" || "User", "apps-route", "/track-exit-event", error);
+    logger.error("" || "User", "apps-route", "/track-exit-event", error);
     res
       .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
       .json(Response.errorResponse(error));

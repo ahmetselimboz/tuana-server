@@ -409,7 +409,10 @@ router.post("/set-plan", async (req, res, next) => {
 
     const findUser = await User.findByIdAndUpdate(
       findRefreshToken.userId,
-      { plans: body.plan },
+      { 
+        plans: body.plan,
+       
+       },
       { new: true }
     );
     return res
