@@ -43,110 +43,123 @@ const Schema = mongoose.Schema(
       trim:true,
       default:null,
     },
-    data: [
-      {
-        visitorId: {
-          type: String,
-          trim: true,
-        },
-        ip: {
-          type: String,
-          trim: true,
-        },
-        type: {
-          type: String,
-          trim: true,
-        },
-        data: {},
-        date: {
-          type: Date,
-          default: Date.now,
-          trim: true,
-        },
-        url: {
-          type: String,
-          trim: true,
-        },
-        referrer: {
-          type: String,
-          trim: true,
-          default: "Direct/None",
-        },
-        userDevice: {
-          browser: {
-            name: {
-              type: String,
-              trim: true,
-            },
-            version: {
-              type: String,
-              trim: true,
-            },
-            major: {
-              type: String,
-              trim: true,
-            },
-          },
-          engine: {
-            name: {
-              type: String,
-              trim: true,
-            },
-          },
-          os: {
-            name: {
-              type: String,
-              trim: true,
-            },
-            version: {
-              type: String,
-              trim: true,
-            },
-          },
-          device: {
-            vendor: {
-              type: String,
-              trim: true,
-              default: null,
-            },
-            model: {
-              type: String,
-              trim: true,
-              default: null,
-            },
-            type: {
-              type: String,
-              trim: true,
-              default: null,
-            },
-          },
-        },
-        location: {
-          country: {
-            type: String,
-            trim: true,
-          },
-          city: {
-            type: String,
-            trim: true,
-          },
-        },
-        screenResolution: {
-          type: String,
-          trim: true,
-        },
-        language: {
-          type: String,
-          trim: true,
-        },
-      },
-    ],
+   
     visitor: [
       {
         visitorId: {
           type: String,
           trim: true,
+          required: true,
         },
+        session:{
+          type: String,
+          trim: true,
+          required: true,
+        },
+        data: [
+          {
+            type: {
+              type: String,
+              trim: true,
+              required: true,
+            },
+            details: {},
+       
+            url: {
+              type: String,
+              trim: true,
+              required: true,
+            },
+            referrer: {
+              type: String,
+              trim: true,
+              default: "Direct/None",
+              required: true,
+            },
+            userDevice: {
+              browser: {
+                name: {
+                  type: String,
+                  trim: true,
+                  required: true,
+                },
+                version: {
+                  type: String,
+                  trim: true,
+                  required: true,
+                },
+                major: {
+                  type: String,
+                  trim: true,
+                  required: true,
+                },
+              },
+              engine: {
+                name: {
+                  type: String,
+                  trim: true,
+                  required: true,
+                },
+              },
+              os: {
+                name: {
+                  type: String,
+                  trim: true,
+                  required: true,
+                },
+                version: {
+                  type: String,
+                  trim: true,
+                  required: true,
+                },
+              },
+              device: {
+                vendor: {
+                  type: String,
+                  trim: true,
+                  default: null,
+                },
+                model: {
+                  type: String,
+                  trim: true,
+                  default: null,
+                },
+                type: {
+                  type: String,
+                  trim: true,
+                  default: null,
+                },
+              },
+            },
+            location: {
+              country: {
+                type: String,
+                trim: true,
+                required: true,
+              },
+              city: {
+                type: String,
+                trim: true,
+                required: true,
+              },
+            },
+            screenResolution: {
+              type: String,
+              trim: true,
+              required: true,
+            },
+            language: {
+              type: String,
+              trim: true,
+              required: true,
+            },
+            date: {
+              type: Date,
+              default: Date.now,
+              trim: true,
+            },
+          },
+        ],
         new: {
           type: Boolean,
           trim: true,
@@ -154,8 +167,8 @@ const Schema = mongoose.Schema(
         },
         date: {
           type: Date,
+          default: Date.now,
           trim: true,
-          default: new Date(),
         },
       },
     ],
@@ -164,8 +177,8 @@ const Schema = mongoose.Schema(
 );
 
 Schema.index({ userId: 1, appId: 1 });
-Schema.index({ "data.visitorId": 1 });
-Schema.index({ "data.time": 1 });
+Schema.index({ "visitor.visitorId": 1 });
+Schema.index({ "visitor.date": 1 });
 
 const App = mongoose.model("App", Schema);
 

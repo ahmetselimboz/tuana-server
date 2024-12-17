@@ -38,11 +38,13 @@ const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
       date.setHours(0, 0, 0, 0);
 
       if (!firstdate || firstdate === "null") {
+        // Sadece 'lastdate' verilmişse o tarihe eşit olanları döner
         const getlastdate = new Date(lastdate);
         getlastdate.setHours(0, 0, 0, 0);
 
         return date.getTime() === getlastdate.getTime();
       } else {
+        // Hem 'firstdate' hem 'lastdate' verilmişse aralığı kontrol eder
         const getlastdate = new Date(lastdate);
         getlastdate.setHours(0, 0, 0, 0);
 
@@ -50,8 +52,8 @@ const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
         getfirstdate.setHours(0, 0, 0, 0);
 
         return (
-          date.getTime() >= getlastdate.getTime() &&
-          date.getTime() <= getfirstdate.getTime()
+          date.getTime() >= getfirstdate.getTime() && // İlk tarih dahil
+          date.getTime() <= getlastdate.getTime() // Son tarih dahil
         );
       }
     });
@@ -65,7 +67,7 @@ const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
 const saveTrackEvent = async (io, socket, data) => {
   try {
     const result = await App.findOne({ appId: data.appId });
-    //console.log("🚀 ~ saveTrackEvent ~ data:", data);
+    console.log("🚀 ~ saveTrackEvent ~ data:", data);
 
     if (!result) {
       // throw new CustomError(
@@ -82,14 +84,121 @@ const saveTrackEvent = async (io, socket, data) => {
       console.log("🚀 ~ saveTrackEvent ~ Couldn't find app!");
     }
 
-    // console.log("🚀 ~ socket.on ~ data:", data);
-    await App.findOneAndUpdate(
-      { appId: data.appId },
-      {
-        $push: { data },
-      },
-      { new: true }
-    );
+    // Kullanıcıyı bul
+    const visitorExist = await App.findOne({
+      appId: data.appId,
+      visitor: { $elemMatch: { visitorId: data.visitorId } },
+    });
+    //console.log("🚀 ~ saveTrackEvent ~ userExist:", visitorExist);
+
+    if (!visitorExist) {
+      await App.findOneAndUpdate(
+        { appId: data.appId }, // Belgeyi bulmak için ID
+        {
+          $push: {
+            visitor: {
+              visitorId: data.visitorId,
+              session: data.session,
+              data: [
+                {
+                  type: data.type,
+                  details: data.data || {},
+                  url: data.url,
+                  referrer: data.referrer || "Direct/None",
+                  userDevice: {
+                    browser: data.userDevice.browser,
+                    engine: data.userDevice.engine,
+                    os: data.userDevice.os,
+                    device: data.userDevice.device,
+                  },
+                  location: {
+                    country: data.location.country,
+                    city: data.location.city || "",
+                  },
+                  screenResolution: data.screenResolution,
+                  language: data.language,
+                },
+              ],
+              new: true,
+            },
+          },
+        }, // visitor array'ine veri ekleme
+        { new: true } // Güncellenmiş belgeyi döner
+      );
+    } else {
+      const sessionExist = await App.findOne({
+        appId: data.appId,
+        visitor: { $elemMatch: { session: data.session } },
+      });
+
+      if (sessionExist) {
+        await App.findOneAndUpdate(
+          { appId: data.appId, "visitor.session": data.session },
+          {
+            $push: {
+              "visitor.$[elem].data": {
+                type: data.type,
+                details: data.data || {},
+                url: data.url,
+                referrer: data.referrer || "Direct/None",
+                userDevice: {
+                  browser: data.userDevice.browser,
+                  engine: data.userDevice.engine,
+                  os: data.userDevice.os,
+                  device: data.userDevice.device,
+                },
+                location: {
+                  country: data.location.country,
+                  city: data.location.city || "",
+                },
+                screenResolution: data.screenResolution,
+                language: data.language,
+              },
+            },
+          },
+          {
+            arrayFilters: [{ "elem.session": data.session }], // Doğru `visitor` öğesini seç
+            new: true, // Güncellenmiş belgeyi döner
+          }
+        );
+      } else {
+        await App.findOneAndUpdate(
+          { appId: data.appId }, // Belgeyi bulmak için ID
+          {
+            $push: {
+              visitor: {
+                visitorId: data.visitorId,
+                session: data.session,
+                data: [
+                  {
+                    type: data.type,
+                    details: data.data || {},
+                    url: data.url,
+                    referrer: data.referrer || "Direct/None",
+                    userDevice: {
+                      browser: data.userDevice.browser,
+                      engine: data.userDevice.engine,
+                      os: data.userDevice.os,
+                      device: data.userDevice.device,
+                    },
+                    location: {
+                      country: data.location.country,
+                      city: data.location.city || "",
+                    },
+                    screenResolution: data.screenResolution,
+                    language: data.language,
+                  },
+                ],
+                new: false,
+              },
+            },
+          }, // visitor array'ine veri ekleme
+          { new: true } // Güncellenmiş belgeyi döner
+        );
+      }
+    }
+
+    // Gelen session'a uygun olan `visitor` öğesinin data alanını güncelle
   } catch (error) {
     console.log("🚀 ~ saveTrackEvent ~ error:", error);
     auditLogs.error("" || "User", "appServices", "saveTrackEvent", error);
@@ -99,36 +208,35 @@ const saveTrackEvent = async (io, socket, data) => {
 
 const saveVisitor = async (data) => {
   try {
-    const findIp = await App.findOne(
-      { appId: data.appId, "visitor.visitorId": data.visitorId },
-      { "visitor.$": 1 }
-    );
-
-    if (!findIp) {
-      await App.findOneAndUpdate(
-        { appId: data.appId },
-        {
-          $push: {
-            visitor: { visitorId: data.visitorId, new: true, date: new Date() },
-          },
-        },
-        { new: true }
-      );
-    } else {
-      await App.findOneAndUpdate(
-        { appId: data.appId },
-        {
-          $push: {
-            visitor: {
-              visitorId: data.visitorId,
-              new: false,
-              date: new Date(),
-            },
-          },
-        },
-        { new: true }
-      );
-    }
+    // const findIp = await App.findOne(
+    //   { appId: data.appId, "visitor.visitorId": data.visitorId },
+    //   { "visitor.$": 1 }
+    // );
+    // if (!findIp) {
+    //   await App.findOneAndUpdate(
+    //     { appId: data.appId },
+    //     {
+    //       $push: {
+    //         visitor: { visitorId: data.visitorId, new: true, date: new Date() },
+    //       },
+    //     },
+    //     { new: true }
+    //   );
+    // } else {
+    //   await App.findOneAndUpdate(
+    //     { appId: data.appId },
+    //     {
+    //       $push: {
+    //         visitor: {
+    //           visitorId: data.visitorId,
+    //           new: false,
+    //           date: new Date(),
+    //         },
+    //       },
+    //     },
+    //     { new: true }
+    //   );
+    // }
   } catch (error) {
     console.log("🚀 ~ saveVisitor ~ error:", error);
     auditLogs.error("" || "User", "appServices", "saveVisitor", error);
@@ -138,14 +246,33 @@ const saveVisitor = async (data) => {
 
 const newVisitors = async (body) => {
   try {
-    const findApp = await App.findOne({ appId: body.appId }).select("visitor");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Bugünün saat kısmını sıfırla
 
-    const result = findApp.visitor.filter((item) => {
-      const date = new Date(item.date);
-      date.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1); // Ertesi gün
 
-      return item.new === true && date.getTime() === today.getTime();
-    });
+    const result = await App.aggregate([
+      { $match: { appId: body.appId } }, // appId'ye göre belgeyi bul
+      {
+        $project: {
+          visitor: {
+            $filter: {
+              // MongoDB filter pipeline kullanımı
+              input: "$visitor",
+              as: "item",
+              cond: {
+                $and: [
+                  { $eq: ["$$item.new", true] }, // 'new' alanı true olanlar
+                  { $gte: ["$$item.date", today] }, // Tarih >= bugünün başlangıcı
+                  { $lt: ["$$item.date", tomorrow] }, // Tarih < yarının başlangıcı
+                ],
+              },
+            },
+          },
+        },
+      },
+    ]);
 
     return result;
   } catch (error) {
@@ -157,25 +284,31 @@ const newVisitors = async (body) => {
 
 const findTopPage = async (body) => {
   try {
-    const findApp = await App.findOne({ appId: body.appId }).select("data");
+    const findApp = await App.findOne({ appId: body.appId }).select("visitor");
 
-    const urlCounts = findApp.data.reduce((acc, item) => {
-      const visitDate = new Date(item.date);
-      visitDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-      if (visitDate.getTime() === today.getTime()) {
-        const url = item.url;
-        if (acc[url]) {
-          acc[url]++;
-        } else {
-          acc[url] = 1;
+    const urlCounts = findApp.visitor.reduce((acc, visitor) => {
+      // Her ziyaretçinin data dizisini kontrol et
+      visitor.data.forEach((item) => {
+        const visitDate = new Date(item.date);
+        visitDate.setHours(0, 0, 0, 0);
+
+        if (visitDate.getTime() === today.getTime()) {
+          const url = item.url;
+          if (acc[url]) {
+            acc[url]++;
+          } else {
+            acc[url] = 1;
+          }
         }
-      }
+      });
 
       return acc;
     }, {});
 
-    //console.log("🚀 ~ urlCounts ~ urlCounts:", urlCounts);
+    // En çok ziyaret edilen URL'yi bul
     const mostVisitedUrl = Object.keys(urlCounts).length
       ? Object.keys(urlCounts).reduce((a, b) =>
           urlCounts[a] > urlCounts[b] ? a : b
@@ -192,68 +325,64 @@ const findTopPage = async (body) => {
 
 const calculateSessionDuration = async (body) => {
   try {
-    const findApp = await App.find({ appId: body.appId }).select("data");
+    const findApp = await App.find({ appId: body.appId }).select("visitor");
 
+    // Veriyi düzleştir ve tarihleri kontrol et
     const data = findApp.flatMap((app) =>
-      app.data.map((item) => ({
-        visitorId: item.visitorId,
-        type: item.type,
-        date: item.date,
-      }))
+      app.visitor.flatMap((visitor) =>
+        visitor.data.map((item) => ({
+          visitorId: visitor.visitorId,
+          type: item.type,
+          date: moment(item.date).isValid() ? moment(item.date) : null,
+        }))
+      )
     );
-
-    const filteredData = filterVisitorsByDate(
-      data,
-      body.firstdate,
-      body.lastdate
-    );
-
+    
+    // Tarih aralığına göre filtreleme
+    const filteredData = filterVisitorsByDate(data, body.firstdate, body.lastdate);
+    
     let sessions = {};
-
-    filteredData.forEach((entry) => {
-      const visitorId = entry.visitorId;
-      const entryTime = moment(entry.date);
-
-      if (!sessions[visitorId]) {
-        sessions[visitorId] = [];
-      }
-
-      if (entry.type === "page_view") {
-        sessions[visitorId].push({
-          viewTime: entryTime,
-          exitTime: null,
-        });
-      }
-
-      if (entry.type === "page_exit") {
-        const lastSession = sessions[visitorId].find(
-          (session) => session.exitTime === null
-        );
-        if (lastSession) {
-          lastSession.exitTime = entryTime;
-        }
-      }
-    });
-
     let totalDuration = 0;
     let sessionCount = 0;
-
-    Object.keys(sessions).forEach((visitorId) => {
-      sessions[visitorId].forEach((session) => {
-        if (session.exitTime && session.viewTime) {
-          const duration = session.exitTime.diff(session.viewTime, "seconds");
+    
+    // Oturumları oluştur ve süreleri hesapla
+    filteredData.forEach((entry) => {
+      const { visitorId, type, date } = entry;
+    
+      if (!date) {
+        console.error("Geçersiz tarih:", entry);
+        return;
+      }
+    
+      if (!sessions[visitorId]) sessions[visitorId] = [];
+    
+      if (type === "page_view") {
+        sessions[visitorId].push({ viewTime: date, exitTime: null });
+      } else if (type === "User leaving the page") {
+        const lastSession = sessions[visitorId].find((s) => !s.exitTime);
+        if (lastSession) lastSession.exitTime = date;
+      }
+    });
+    
+    // Ortalama süre hesaplama
+    Object.values(sessions).forEach((visitorSessions) => {
+      visitorSessions.forEach(({ viewTime, exitTime }) => {
+        if (viewTime && exitTime && viewTime.isValid() && exitTime.isValid()) {
+          const duration = exitTime.diff(viewTime, "seconds");
           totalDuration += duration;
           sessionCount++;
         }
       });
     });
-
+    
     const averageDurationInSeconds =
       sessionCount > 0 ? totalDuration / sessionCount : 0;
-
+    
     const minutes = Math.floor(averageDurationInSeconds / 60);
     const seconds = Math.floor(averageDurationInSeconds % 60);
-
+    
+    console.log(`Ortalama Oturum Süresi: ${minutes} dakika ${seconds} saniye`);
+    
     return { minutes, seconds };
   } catch (error) {
     console.log("🚀 ~ calculateSessionDuration ~ error:", error);

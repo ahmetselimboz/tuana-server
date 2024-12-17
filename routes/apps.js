@@ -112,7 +112,7 @@ router.post("/new-visitor", async (req, res) => {
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
         code: _enum.HTTP_CODES.OK,
-        visitor: result.length,
+        visitor: result[0].visitor.length,
       })
     );
   } catch (error) {
@@ -542,10 +542,40 @@ router.post("/track-exit-event", async (req, res, next) => {
 
     console.log("🚀 ~ Gelen Exit Event Verisi:", body);
 
+    await App.findOneAndUpdate(
+      { appId: body.appId, "visitor.session": body.session },
+      {
+        $push: {
+          "visitor.$[elem].data": {
+            type: body.type,
+            details: body.data || {},
+            url: body.url,
+            referrer: body.referrer || "Direct/None",
+            userDevice: {
+              browser: body.userDevice.browser,
+              engine: body.userDevice.engine,
+              os: body.userDevice.os,
+              device: body.userDevice.device,
+            },
+            location: {
+              country: body.location.country,
+              city: body.location.city || "",
+            },
+            screenResolution: body.screenResolution,
+            language: body.language,
+          },
+        },
+      },
+      {
+        arrayFilters: [{ "elem.session": body.session }], // Doğru `visitor` öğesini seç
+        new: true, // Güncellenmiş belgeyi döner
+      }
+    );
+
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
         code: _enum.HTTP_CODES.OK,
-        message: "Pin removed!",
+        status: true,
       })
     );
   } catch (error) {
