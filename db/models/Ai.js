@@ -50,13 +50,17 @@ const schema = new mongoose.Schema(
       type: Number,
       default: 4096,
     },
-    ai_limit:{
+    ai_limit: {
       type: Number,
       trim: true,
       required: true,
-      default:10
+      default: 10,
     },
-
+    platform_data: {},
+    save_history: {
+      type: Boolean,
+      default: true,
+    },
   },
   { versionKey: false, timestamps: true }
 );
