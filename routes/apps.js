@@ -112,7 +112,7 @@ router.post("/new-visitor", async (req, res) => {
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
         code: _enum.HTTP_CODES.OK,
-        visitor: result[0].visitor.length,
+        visitor: result,
       })
     );
   } catch (error) {
@@ -164,6 +164,7 @@ router.post("/avg-duration", async (req, res) => {
 router.post("/line-card", async (req, res) => {
   try {
     const { body } = req;
+    console.log("🚀 ~ /line-card ~ body:", body)
     const query = body.query;
 
    
@@ -260,7 +261,9 @@ router.post("/sources-card", async (req, res) => {
 router.post("/languages-card", async (req, res) => {
   try {
     const { body } = req;
+  
     const query = body.query;
+
     const result = await languagesCard(body, query);
 
     return res
@@ -274,6 +277,7 @@ router.post("/languages-card", async (req, res) => {
     logger.error("" || "User", "apps-route", "POST /languages-card", error);
   }
 });
+
 
 router.get("/get-appid", async (req, res, next) => {
   try {

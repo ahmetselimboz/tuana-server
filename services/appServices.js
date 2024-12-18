@@ -5,19 +5,6 @@ const moment = require("moment");
 const CustomError = require("../lib/error");
 const _enum = require("../config/enum");
 
-const data = [
-  { referrer: "http://localhost:3000/analytics?id=TNAKLYTP" },
-  { referrer: "https://www.google.com" },
-  { referrer: "https://www.github.com" },
-  { referrer: "https://www.linkedin.com" },
-  { referrer: "https://twitter.com" },
-  { referrer: "https://yandex.com" },
-  { referrer: "https://www.bing.com" },
-  { referrer: "https://yahoo.com" },
-  { referrer: "https://yahoo.com" },
-  { referrer: "https://twitter.com" },
-];
-
 // Domaini referrer URL'sinden dinamik olarak çıkartan fonksiyon
 function getDomainFromReferrer(referrer) {
   try {
@@ -33,30 +20,31 @@ today.setHours(0, 0, 0, 0);
 
 const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
   try {
-    return visitors.filter((item) => {
-      const date = new Date(item.date);
-      date.setHours(0, 0, 0, 0);
+    if (!visitors || visitors.length === 0) return [];
 
-      if (!firstdate || firstdate === "null") {
-        // Sadece 'lastdate' verilmişse o tarihe eşit olanları döner
-        const getlastdate = new Date(lastdate);
-        getlastdate.setHours(0, 0, 0, 0);
+    // lastdate için UTC başlangıç ve bitiş saatlerini ayarla
+    const lastDateStart = new Date(lastdate);
+    lastDateStart.setUTCHours(0, 0, 0, 0);
 
-        return date.getTime() === getlastdate.getTime();
-      } else {
-        // Hem 'firstdate' hem 'lastdate' verilmişse aralığı kontrol eder
-        const getlastdate = new Date(lastdate);
-        getlastdate.setHours(0, 0, 0, 0);
+    const lastDateEnd = new Date(lastdate);
+    lastDateEnd.setUTCHours(23, 59, 59, 999);
 
-        const getfirstdate = new Date(firstdate);
-        getfirstdate.setHours(0, 0, 0, 0);
+    if (!firstdate || firstdate === "null") {
+      // Sadece lastdate'in olduğu gün
+      return visitors.filter((item) => {
+        const date = new Date(item.date);
+        return date >= lastDateStart && date <= lastDateEnd;
+      });
+    } else {
+      // Hem firstdate hem lastdate doluysa aralığı kontrol et
+      const firstDateStart = new Date(firstdate);
+      firstDateStart.setUTCHours(0, 0, 0, 0);
 
-        return (
-          date.getTime() >= getfirstdate.getTime() && // İlk tarih dahil
-          date.getTime() <= getlastdate.getTime() // Son tarih dahil
-        );
-      }
-    });
+      return visitors.filter((item) => {
+        const date = new Date(item.date);
+        return date >= firstDateStart && date <= lastDateEnd;
+      });
+    }
   } catch (error) {
     console.log("🚀 ~ filterVisitorsByDate ~ error:", error);
     auditLogs.error("" || "User", "appServices", "filterVisitorsByDate", error);
@@ -99,6 +87,7 @@ const saveTrackEvent = async (io, socket, data) => {
             visitor: {
               visitorId: data.visitorId,
               session: data.session,
+              language: data.language,
               data: [
                 {
                   type: data.type,
@@ -116,7 +105,7 @@ const saveTrackEvent = async (io, socket, data) => {
                     city: data.location.city || "",
                   },
                   screenResolution: data.screenResolution,
-                  language: data.language,
+                 
                 },
               ],
               new: true,
@@ -152,7 +141,7 @@ const saveTrackEvent = async (io, socket, data) => {
                   city: data.location.city || "",
                 },
                 screenResolution: data.screenResolution,
-                language: data.language,
+               
               },
             },
           },
@@ -169,6 +158,7 @@ const saveTrackEvent = async (io, socket, data) => {
               visitor: {
                 visitorId: data.visitorId,
                 session: data.session,
+                language: data.language,
                 data: [
                   {
                     type: data.type,
@@ -186,7 +176,7 @@ const saveTrackEvent = async (io, socket, data) => {
                       city: data.location.city || "",
                     },
                     screenResolution: data.screenResolution,
-                    language: data.language,
+                   
                   },
                 ],
                 new: false,
@@ -246,35 +236,28 @@ const saveVisitor = async (data) => {
 
 const newVisitors = async (body) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Bugünün saat kısmını sıfırla
+    let totalVisitor = await App.findOne({ appId: body.appId }).select(
+      "visitor.date visitor._id visitor.new "
+    );
+    let newVisitors =
+      totalVisitor?.visitor?.filter((visitor) => visitor.new) || [];
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1); // Ertesi gün
+    newVisitors = newVisitors.map((item) => ({
+      _id: item._id,
+      new: item.new,
+      date: item.date,
+    }));
 
-    const result = await App.aggregate([
-      { $match: { appId: body.appId } }, // appId'ye göre belgeyi bul
-      {
-        $project: {
-          visitor: {
-            $filter: {
-              // MongoDB filter pipeline kullanımı
-              input: "$visitor",
-              as: "item",
-              cond: {
-                $and: [
-                  { $eq: ["$$item.new", true] }, // 'new' alanı true olanlar
-                  { $gte: ["$$item.date", today] }, // Tarih >= bugünün başlangıcı
-                  { $lt: ["$$item.date", tomorrow] }, // Tarih < yarının başlangıcı
-                ],
-              },
-            },
-          },
-        },
-      },
-    ]);
+    const lastdate = new Date();
+    const firstdate = null;
 
-    return result;
+    const newVisitorsResult = filterVisitorsByDate(
+      newVisitors,
+      firstdate,
+      lastdate
+    );
+
+    return newVisitorsResult.length;
   } catch (error) {
     console.log("🚀 ~ newVisitors ~ error:", error);
     auditLogs.error("" || "User", "appServices", "newVisitors", error);
@@ -337,25 +320,29 @@ const calculateSessionDuration = async (body) => {
         }))
       )
     );
-    
+
     // Tarih aralığına göre filtreleme
-    const filteredData = filterVisitorsByDate(data, body.firstdate, body.lastdate);
-    
+    const filteredData = filterVisitorsByDate(
+      data,
+      body.firstdate,
+      body.lastdate
+    );
+
     let sessions = {};
     let totalDuration = 0;
     let sessionCount = 0;
-    
+
     // Oturumları oluştur ve süreleri hesapla
     filteredData.forEach((entry) => {
       const { visitorId, type, date } = entry;
-    
+
       if (!date) {
         console.error("Geçersiz tarih:", entry);
         return;
       }
-    
+
       if (!sessions[visitorId]) sessions[visitorId] = [];
-    
+
       if (type === "page_view") {
         sessions[visitorId].push({ viewTime: date, exitTime: null });
       } else if (type === "User leaving the page") {
@@ -363,7 +350,7 @@ const calculateSessionDuration = async (body) => {
         if (lastSession) lastSession.exitTime = date;
       }
     });
-    
+
     // Ortalama süre hesaplama
     Object.values(sessions).forEach((visitorSessions) => {
       visitorSessions.forEach(({ viewTime, exitTime }) => {
@@ -374,15 +361,15 @@ const calculateSessionDuration = async (body) => {
         }
       });
     });
-    
+
     const averageDurationInSeconds =
       sessionCount > 0 ? totalDuration / sessionCount : 0;
-    
+
     const minutes = Math.floor(averageDurationInSeconds / 60);
     const seconds = Math.floor(averageDurationInSeconds % 60);
-    
+
     console.log(`Ortalama Oturum Süresi: ${minutes} dakika ${seconds} saniye`);
-    
+
     return { minutes, seconds };
   } catch (error) {
     console.log("🚀 ~ calculateSessionDuration ~ error:", error);
@@ -405,35 +392,40 @@ const lineCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
 
-    const totalVisitor = await App.findOne({ appId: body.appId }).select(
-      "visitor.date visitor._id visitor.new"
+    // Ziyaretçileri getir
+    let totalVisitor = await App.findOne({ appId: body.appId }).select(
+      "visitor.date visitor._id visitor.new visitor.data.date visitor.data.type"
     );
+    const totalVisitorData = totalVisitor?.visitor.map((item) => ({
+      _id: item._id,
+      new: item.new,
+      date: item.date,
+    }));
 
-    const totalVisitorResult = filterVisitorsByDate(
-      totalVisitor.visitor,
+    // Ziyaretçileri tarih aralığına göre filtrele
+    const totalVisitorResult = await filterVisitorsByDate(
+      totalVisitorData,
       firstdate,
       lastdate
     );
 
-    //  console.log("🚀 ~ lineCard ~ totalVisitorResult:", totalVisitorResult)
-
-    const timezone = await App.findOne({ appId: body.appId }).select(
-      "timezone"
-    );
-
-    const totalPageResult = await App.find({ appId: body.appId }).select(
-      "data.type data.date date._id"
-    );
-
-    const totalPage = totalPageResult[0]?.data.filter(
-      (item) => item.type === "page_view"
-    );
+    // Ziyaretçi datalarının içindeki "page_view" verilerini tarih aralığına göre filtrele
+    const totalPage =
+      totalVisitor?.visitor?.flatMap((visitor) =>
+        visitor?.data?.filter((item) => item.type === "page_view")
+      ) || [];
 
     const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
 
-    const newVisitors = totalVisitor?.visitor.filter(
-      (item) => item.new === true
-    );
+    // Yeni ziyaretçileri al ve tarih aralığına göre filtrele
+    let newVisitors =
+      totalVisitor?.visitor?.filter((visitor) => visitor.new) || [];
+
+    newVisitors = newVisitors.map((item) => ({
+      _id: item._id,
+      new: item.new,
+      date: item.date,
+    }));
 
     const newVisitorsResult = filterVisitorsByDate(
       newVisitors,
@@ -441,8 +433,14 @@ const lineCard = async (body, query) => {
       lastdate
     );
 
+    // Zaman dilimini getir
+    const timezone = await App.findOne({ appId: body.appId }).select(
+      "timezone"
+    );
+
+    // Sonucu döndür
     const result = {
-      timezone: timezone.timezone,
+      timezone: timezone?.timezone || "Unknown",
       totalVisitor: totalVisitorResult,
       totalPage: totalPageRange,
       newVisitors: newVisitorsResult,
@@ -459,29 +457,21 @@ const lineCard = async (body, query) => {
 const deviceCard = async (body, query) => {
   try {
     let { firstdate, lastdate } = query;
-    // console.log("old lastdate: ",lastdate);
-    // firstdate = new Date(firstdate).toString()
-    // lastdate = new Date(lastdate)
-    // console.log("new lastdate: ",lastdate);
 
+    // Veritabanından ziyaretçilerin verilerini çek
     const totalPageResult = await App.find({ appId: body.appId }).select(
-      "data.userDevice data.date data.type"
-    );
-    // console.log("🚀 ~ deviceCard ~ totalPageResult:", totalPageResult)
-
-    const totalPage = totalPageResult[0]?.data.filter(
-      (item) => item.type === "page_view"
+      "visitor.data.userDevice visitor.data.date visitor.data.type"
     );
 
-    const totalPageRange = await filterVisitorsByDate(
-      totalPage,
-      firstdate,
-      lastdate
+    // "page_view" türündeki verileri topla
+    const totalPage = totalPageResult.flatMap((app) =>
+      app.visitor.flatMap((visitor) =>
+        visitor.data.filter((item) => item.type === "page_view")
+      )
     );
 
-    // const result = {
-    //   totalPage: totalPageRange,
-    // };
+    // Tarih aralığına göre filtrele
+    const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
 
     return totalPageRange;
   } catch (error) {
@@ -495,20 +485,22 @@ const pageCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
 
+    // Veritabanından "data" alanını çek
     const totalPageResult = await App.find({ appId: body.appId }).select(
-      "data"
+      "visitor"
     );
 
-    const totalPage = totalPageResult[0]?.data.filter(
-      (item) => item.type === "page_view"
+    // "page_view" türündeki tüm sayfa görünümlerini topla
+    const totalPage = totalPageResult.flatMap((app) =>
+      app.visitor.flatMap((visitor) =>
+        visitor.data.filter((item) => item.type === "page_view")
+      )
     );
 
-    const totalPageRange = await filterVisitorsByDate(
-      totalPage,
-      firstdate,
-      lastdate
-    );
+    // Tarih aralığına göre filtreleme
+    const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
 
+    // Sayfa görünümlerini gruplama
     const pageViews = totalPageRange.reduce((acc, page) => {
       const route = page.url;
 
@@ -521,11 +513,13 @@ const pageCard = async (body, query) => {
       return acc;
     }, {});
 
+    // Sayfa görünümlerini formatlama
     const formattedPageViews = Object.keys(pageViews).map((route) => ({
-      route: route,
+      route,
       visitor: pageViews[route].toString(),
     }));
 
+    // Sonuç döndürme
     const result = {
       totalPage: formattedPageViews,
     };
@@ -542,41 +536,41 @@ const locationCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
 
+    // Tüm data alanını al
     const totalPageResult = await App.find({ appId: body.appId }).select(
-      "data"
+      "visitor"
     );
 
-    const totalPage = totalPageResult[0]?.data.filter(
-      (item) => item.type === "page_view"
+    // "page_view" türündeki verileri düzleştir ve filtrele
+    const totalPage = totalPageResult.flatMap((app) =>
+      app.visitor.flatMap((visitor) =>
+        visitor.data
+          .filter((item) => item.type === "page_view")
+          .map((item) => ({
+            location: item.location,
+            date: item.date,
+          }))
+      )
     );
 
-    const totalPageRange = await filterVisitorsByDate(
-      totalPage,
-      firstdate,
-      lastdate
-    );
+    // Tarih aralığına göre filtrele
+    const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
 
-    const uniqueVisitors = new Set();
+    // Ülke bazlı benzersiz ziyaretçi sayısını hesapla
     const countriesData = {};
 
     totalPageRange.forEach((entry) => {
-      const country = entry.location.country;
-      const visitorId = entry.visitorId;
-      if (country && visitorId && !uniqueVisitors.has(visitorId)) {
-        uniqueVisitors.add(visitorId);
+      const country = entry.location?.country || "Unknown";
 
-        if (countriesData[country]) {
-          countriesData[country]++;
-        } else {
-          countriesData[country] = 1;
-        }
-      }
+      countriesData[country] = (countriesData[country] || 0) + 1;
     });
 
+    // Ülke verilerini formatla
     const locationData = Object.entries(countriesData).map(
       ([country, visitor]) => ({ country, visitor })
     );
 
+    // Sonuç
     const result = {
       totalLocationVisitor: locationData,
     };
@@ -593,37 +587,47 @@ const sourcesCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
 
+    // Veritabanından gerekli visitor verisini çek
     const totalPageResult = await App.find({ appId: body.appId }).select(
-      "data"
+      "visitor"
     );
 
-    const totalPage = totalPageResult[0]?.data.filter(
-      (item) => item.type === "page_view"
+    // "page_view" türündeki verileri düzleştir ve filtrele
+    const totalPage = totalPageResult.flatMap((app) =>
+      app.visitor.flatMap((visitor) =>
+        visitor.data
+          .filter((item) => item.type === "page_view") // Sadece "page_view" türündeki verileri al
+          .map((item) => ({
+            referrer: item.referrer,
+            date: item.date,
+          }))
+      )
     );
 
+    // Tarih aralığına göre filtreleme
     const totalPageRange = await filterVisitorsByDate(
       totalPage,
       firstdate,
       lastdate
     );
 
+    // Referrer alanına göre domain sayımı
     const referrerCounts = {};
 
     totalPageRange.forEach((item) => {
-      const domain = getDomainFromReferrer(item.referrer);
+      const domain = getDomainFromReferrer(item.referrer) || "Direct/None";
 
-      if (referrerCounts[domain]) {
-        referrerCounts[domain]++;
-      } else {
-        referrerCounts[domain] = 1;
-      }
+      // Referrer'i say
+      referrerCounts[domain] = (referrerCounts[domain] || 0) + 1;
     });
 
-    const sources = Object.keys(referrerCounts).map((domain) => ({
+    // Referrer verilerini formatla
+    const sources = Object.entries(referrerCounts).map(([domain, visitor]) => ({
       route: domain,
-      visitor: referrerCounts[domain],
+      visitor,
     }));
 
+    // Sonuç objesi
     const result = {
       totalSources: sources,
     };
@@ -639,46 +643,48 @@ const sourcesCard = async (body, query) => {
 const languagesCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
+    console.log("🚀 ~ languagesCard ~ lastdate:", lastdate);
+    console.log("🚀 ~ languagesCard ~ firstdate:", firstdate);
 
+    // Veritabanından gerekli veriyi çek
     const totalPageResult = await App.find({ appId: body.appId }).select(
-      "data.language data.visitorId data.date data.type"
+      "visitor.language visitor.date "
     );
 
-    const totalPage = totalPageResult[0]?.data.filter(
-      (item) => item.type === "page_view"
-    );
+    // "page_view" türündeki verileri filtrele
+    // const totalPage = totalPageResult.flatMap((app) =>
+    //   app.visitor.flatMap(
+    //     (visitor) => visitor.data.filter((item) => item.type === "page_view") // Sadece "page_view" türündeki verileri al
+    //   )
+    // );
 
+    // Tarih aralığına göre filtreleme
     const totalPageRange = await filterVisitorsByDate(
-      totalPage,
+      totalPageResult[0]?.visitor,
       firstdate,
       lastdate
     );
+    // return totalPageRange
 
-    const result = {
-      uniqueVisitor: [],
-      languages: [],
-    };
-
-    const uniqueVisitors = new Set();
+    // Dil bazlı ziyaretçi sayımı
     const languageCount = {};
 
     totalPageRange.forEach((entry) => {
-      const visitorId = entry.visitorId;
       const lang = entry.language;
 
-      if (!uniqueVisitors.has(visitorId)) {
-        uniqueVisitors.add(visitorId);
-
-        if (languageCount[lang]) {
-          languageCount[lang]++;
-        } else {
-          languageCount[lang] = 1;
-        }
+      // Dil sayısını artır
+      if (languageCount[lang]) {
+        languageCount[lang]++;
+      } else {
+        languageCount[lang] = 1;
       }
     });
 
-    result.languages = Object.keys(languageCount);
-    result.uniqueVisitor = Object.values(languageCount);
+    // Sonuç objesi
+    const result = {
+      uniqueVisitor: Object.values(languageCount),
+      languages: Object.keys(languageCount),
+    };
 
     return result;
   } catch (error) {

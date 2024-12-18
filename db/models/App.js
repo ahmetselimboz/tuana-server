@@ -28,22 +28,22 @@ const Schema = mongoose.Schema(
       required: true,
       default: false,
     },
-    active:{
+    active: {
       type: Boolean,
       trim: true,
       required: true,
       default: false,
     },
-    timezone:{
+    timezone: {
       type: String,
       trim: true,
     },
-    domain:{
-      type:String,
-      trim:true,
-      default:null,
+    domain: {
+      type: String,
+      trim: true,
+      default: null,
     },
-   
+
     visitor: [
       {
         visitorId: {
@@ -51,7 +51,7 @@ const Schema = mongoose.Schema(
           trim: true,
           required: true,
         },
-        session:{
+        session: {
           type: String,
           trim: true,
           required: true,
@@ -64,7 +64,7 @@ const Schema = mongoose.Schema(
               required: true,
             },
             details: {},
-       
+
             url: {
               type: String,
               trim: true,
@@ -148,11 +148,7 @@ const Schema = mongoose.Schema(
               trim: true,
               required: true,
             },
-            language: {
-              type: String,
-              trim: true,
-              required: true,
-            },
+
             date: {
               type: Date,
               default: Date.now,
@@ -169,6 +165,11 @@ const Schema = mongoose.Schema(
           type: Date,
           default: Date.now,
           trim: true,
+        },
+        language: {
+          type: String,
+          trim: true,
+          required: true,
         },
       },
     ],
