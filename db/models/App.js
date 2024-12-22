@@ -38,6 +38,10 @@ const Schema = mongoose.Schema(
       type: String,
       trim: true,
     },
+    favicon: {
+      type: String,
+      trim: true,
+    },
     domain: {
       type: String,
       trim: true,

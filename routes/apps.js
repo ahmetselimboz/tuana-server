@@ -17,6 +17,9 @@ const {
   locationCard,
   sourcesCard,
   languagesCard,
+  checkTrackingScript,
+  generateRandomCode,
+  getFavicon,
 } = require("../services/appServices");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
@@ -24,84 +27,7 @@ const getPlatormData = require("../lib/playwright");
 const AI = require("../db/models/Ai");
 
 const router = require("express").Router();
-function generateRandomCode() {
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return code;
-}
 
-async function checkTrackingScript(appId, domain) {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
-  const page = await browser.newPage();
-
-  try {
-    await page.goto(`https://${domain}`, { waitUntil: "networkidle2" });
-    // await page.goto(
-    //   `http://${domain}`,
-    //   { waitUntil: "networkidle2" }
-    // );
-
-    // Sayfa yüklendikten sonra kısa bir bekleme süresi
-    await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 saniye bekleme süresi
-
-    // `track.js` script'in yüklü olup olmadığını kontrol et
-    const hasTrackingScript = await page.evaluate(() =>
-      Array.from(document.scripts).some(
-        (script) =>
-          script.src.includes("https://cdn.tuanalytics.com/script/track.js")
-        //script.src.includes("/track.js")
-      )
-    );
-
-    const dataLayerContent = await page.evaluate(() => {
-      return new Promise((resolve) => {
-        const checkDataLayer = () => {
-          if (window.dataLayer && window.dataLayer.length > 0) {
-            resolve(window.dataLayer);
-          }
-        };
-
-        // İlk kontrol
-        checkDataLayer();
-
-        // dataLayer güncellenirse tekrar kontrol etmek için MutationObserver kullan
-        const observer = new MutationObserver(checkDataLayer);
-        observer.observe(document, { childList: true, subtree: true });
-
-        // 5 saniye sonra otomatik olarak kapat
-        setTimeout(() => {
-          observer.disconnect();
-          resolve([]);
-        }, 5000);
-      });
-    });
-
-    //console.log("dataLayer içeriği:", dataLayerContent);
-
-    // `dataLayer` ve track komutlarını kontrol et
-    const hasDomainTrack = dataLayerContent.some(
-      (event) => event[0] === "domain" && event[1] === domain
-    );
-    const hasConfigTrack = dataLayerContent.some(
-      (event) => event[0] === "config" && event[1] === appId
-    );
-
-    await browser.close();
-
-    // Tüm koşullar sağlanıyorsa script doğru eklenmiştir
-    return hasTrackingScript && hasConfigTrack && hasDomainTrack;
-  } catch (error) {
-    console.error("Hata oluştu:", error);
-    await browser.close();
-    return false;
-  }
-}
 
 router.post("/new-visitor", async (req, res) => {
   try {
@@ -320,6 +246,7 @@ router.post("/create-project", async (req, res, next) => {
       type: body.type,
       project_name: body.project_name,
       active: true,
+      favicon: body.type == "Web" ? getFavicon() : ""
     }).save();
 
     await User.findByIdAndUpdate(

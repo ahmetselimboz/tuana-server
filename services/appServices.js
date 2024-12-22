@@ -6,14 +6,122 @@ const CustomError = require("../lib/error");
 const _enum = require("../config/enum");
 
 // Domaini referrer URL'sinden dinamik olarak çıkartan fonksiyon
-function getDomainFromReferrer(referrer) {
+const getDomainFromReferrer = (referrer) => {
   try {
     const url = new URL(referrer);
     return url.hostname.replace("www.", ""); // 'www.' kısmını kaldır
   } catch (error) {
     return "Direct/None"; // Referrer yoksa 'Direct/None' olarak kabul et
   }
-}
+};
+
+const getFavicon = async ({ domain }) => {
+  // Tarayıcıyı başlat
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+
+  // İlgili siteyi aç
+  await page.goto(`https://${domain}`);
+
+  // Favicon'un URL'sini almak için bir sorgu çalıştır
+  const faviconUrl = await page.evaluate(() => {
+    // Favicon'u <link> elementinden al
+    const linkElement =
+      document.querySelector("link[rel~='icon']") ||
+      document.querySelector("link[rel~='shortcut']");
+    return linkElement ? linkElement.href : null; // Favicon URL'sini döndür
+  });
+
+  if (faviconUrl) {
+    console.log("Favicon URL:", faviconUrl);
+  } else {
+    faviconUrl = "https://cdn.linatechnologies.com/img/tuana/icon_not_found.jpg"
+  }
+
+  // Tarayıcıyı kapat
+  await browser.close();
+
+  return faviconUrl
+};
+
+const generateRandomCode = () => {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return code;
+};
+
+const checkTrackingScript = async (appId, domain) => {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+  const page = await browser.newPage();
+
+  try {
+    await page.goto(`https://${domain}`, { waitUntil: "networkidle2" });
+    // await page.goto(
+    //   `http://${domain}`,
+    //   { waitUntil: "networkidle2" }
+    // );
+
+    // Sayfa yüklendikten sonra kısa bir bekleme süresi
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 saniye bekleme süresi
+
+    // `track.js` script'in yüklü olup olmadığını kontrol et
+    const hasTrackingScript = await page.evaluate(() =>
+      Array.from(document.scripts).some(
+        (script) =>
+          script.src.includes("https://cdn.tuanalytics.com/script/track.js")
+        //script.src.includes("/track.js")
+      )
+    );
+
+    const dataLayerContent = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const checkDataLayer = () => {
+          if (window.dataLayer && window.dataLayer.length > 0) {
+            resolve(window.dataLayer);
+          }
+        };
+
+        // İlk kontrol
+        checkDataLayer();
+
+        // dataLayer güncellenirse tekrar kontrol etmek için MutationObserver kullan
+        const observer = new MutationObserver(checkDataLayer);
+        observer.observe(document, { childList: true, subtree: true });
+
+        // 5 saniye sonra otomatik olarak kapat
+        setTimeout(() => {
+          observer.disconnect();
+          resolve([]);
+        }, 5000);
+      });
+    });
+
+    //console.log("dataLayer içeriği:", dataLayerContent);
+
+    // `dataLayer` ve track komutlarını kontrol et
+    const hasDomainTrack = dataLayerContent.some(
+      (event) => event[0] === "domain" && event[1] === domain
+    );
+    const hasConfigTrack = dataLayerContent.some(
+      (event) => event[0] === "config" && event[1] === appId
+    );
+
+    await browser.close();
+
+    // Tüm koşullar sağlanıyorsa script doğru eklenmiştir
+    return hasTrackingScript && hasConfigTrack && hasDomainTrack;
+  } catch (error) {
+    console.error("Hata oluştu:", error);
+    await browser.close();
+    return false;
+  }
+};
 
 const today = new Date();
 today.setHours(0, 0, 0, 0);
@@ -105,7 +213,6 @@ const saveTrackEvent = async (io, socket, data) => {
                     city: data.location.city || "",
                   },
                   screenResolution: data.screenResolution,
-                 
                 },
               ],
               new: true,
@@ -141,7 +248,6 @@ const saveTrackEvent = async (io, socket, data) => {
                   city: data.location.city || "",
                 },
                 screenResolution: data.screenResolution,
-               
               },
             },
           },
@@ -176,7 +282,6 @@ const saveTrackEvent = async (io, socket, data) => {
                       city: data.location.city || "",
                     },
                     screenResolution: data.screenResolution,
-                   
                   },
                 ],
                 new: false,
@@ -458,22 +563,52 @@ const deviceCard = async (body, query) => {
   try {
     let { firstdate, lastdate } = query;
 
-    // Veritabanından ziyaretçilerin verilerini çek
+
+    // const totalPageResult = await App.find({ appId: body.appId }).select(
+    //   "visitor.data.userDevice visitor.data.date visitor.data.type"
+    // );
+
+  
+    // const totalPage = totalPageResult.flatMap((app) =>
+    //   app.visitor.flatMap((visitor) =>
+    //     visitor.data.filter((item) => item.type === "page_view")
+    //   )
+    // );
+
+
+    // const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
+
+    
+  
     const totalPageResult = await App.find({ appId: body.appId }).select(
-      "visitor.data.userDevice visitor.data.date visitor.data.type"
+      "visitor.date visitor.data.userDevice"
     );
 
-    // "page_view" türündeki verileri topla
-    const totalPage = totalPageResult.flatMap((app) =>
-      app.visitor.flatMap((visitor) =>
-        visitor.data.filter((item) => item.type === "page_view")
-      )
+
+    // Tarih aralığına göre filtreleme
+    const totalPageRange = await filterVisitorsByDate(
+      totalPageResult[0]?.visitor,
+      firstdate,
+      lastdate
     );
 
-    // Tarih aralığına göre filtrele
-    const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
+    if (!totalPageRange || !totalPageRange.length) {
+      return []; // Eğer veri yoksa boş bir array döndür
+    }
+  
+    // Her ziyaretçi için dönüşüm işlemi
+    const result = totalPageRange.map((visitor) => {
+      // İlk cihaz bilgisi varsa al, yoksa null
+      const firstUserDevice = visitor.data?.[0]?.userDevice || null;
+  
+      return {
+        userDevice: firstUserDevice, // İlk cihaz bilgisi       
+        date: visitor.date || null,  // Ziyaret tarihi
+      };
+    }).filter(item => item.userDevice !== null);
 
-    return totalPageRange;
+
+    return result;
   } catch (error) {
     console.log("🚀 ~ deviceCard ~ error:", error);
     auditLogs.error("" || "User", "appServices", "deviceCard", error);
@@ -538,28 +673,35 @@ const locationCard = async (body, query) => {
 
     // Tüm data alanını al
     const totalPageResult = await App.find({ appId: body.appId }).select(
-      "visitor"
+      "visitor.date visitor.data.location"
     );
 
-    // "page_view" türündeki verileri düzleştir ve filtrele
-    const totalPage = totalPageResult.flatMap((app) =>
-      app.visitor.flatMap((visitor) =>
-        visitor.data
-          .filter((item) => item.type === "page_view")
-          .map((item) => ({
-            location: item.location,
-            date: item.date,
-          }))
-      )
-    );
 
-    // Tarih aralığına göre filtrele
-    const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
+    const totalPageRange = filterVisitorsByDate(totalPageResult[0].visitor, firstdate, lastdate);
+
+
+    if (!totalPageRange || !totalPageRange.length) {
+      return []; // Eğer veri yoksa boş bir array döndür
+    }
+  
+    // Her ziyaretçi için dönüşüm işlemi
+    const resultsss = totalPageRange.map((visitor) => {
+      // İlk cihaz bilgisi varsa al, yoksa null
+      const firstLocation = visitor.data?.[0]?.location || null;
+  
+      return {
+        location: firstLocation, // İlk cihaz bilgisi       
+        date: visitor.date || null,  // Ziyaret tarihi
+      };
+    }).filter(item => item.location !== null);
+
+
+ 
 
     // Ülke bazlı benzersiz ziyaretçi sayısını hesapla
     const countriesData = {};
 
-    totalPageRange.forEach((entry) => {
+    resultsss.forEach((entry) => {
       const country = entry.location?.country || "Unknown";
 
       countriesData[country] = (countriesData[country] || 0) + 1;
@@ -587,29 +729,53 @@ const sourcesCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
 
-    // Veritabanından gerekli visitor verisini çek
-    const totalPageResult = await App.find({ appId: body.appId }).select(
-      "visitor"
-    );
+    // // Veritabanından gerekli visitor verisini çek
+    // const totalPageResult = await App.find({ appId: body.appId }).select(
+    //   "visitor"
+    // );
 
-    // "page_view" türündeki verileri düzleştir ve filtrele
-    const totalPage = totalPageResult.flatMap((app) =>
-      app.visitor.flatMap((visitor) =>
-        visitor.data
-          .filter((item) => item.type === "page_view") // Sadece "page_view" türündeki verileri al
-          .map((item) => ({
-            referrer: item.referrer,
-            date: item.date,
-          }))
-      )
-    );
+    // // "page_view" türündeki verileri düzleştir ve filtrele
+    // const totalPage = totalPageResult.flatMap((app) =>
+    //   app.visitor.flatMap((visitor) =>
+    //     visitor.data
+    //       .filter((item) => item.type === "page_view") // Sadece "page_view" türündeki verileri al
+    //       .map((item) => ({
+    //         referrer: item.referrer,
+    //         date: item.date,
+    //       }))
+    //   )
+    // );
 
-    // Tarih aralığına göre filtreleme
-    const totalPageRange = await filterVisitorsByDate(
-      totalPage,
-      firstdate,
-      lastdate
-    );
+    // // Tarih aralığına göre filtreleme
+    // const totalPageRange = await filterVisitorsByDate(
+    //   totalPage,
+    //   firstdate,
+    //   lastdate
+    // );
+
+      // Tüm data alanını al
+      const totalPageResult = await App.find({ appId: body.appId }).select(
+        "visitor.date visitor.data.referrer"
+      );
+  
+  
+      const totalPageRange = filterVisitorsByDate(totalPageResult[0].visitor, firstdate, lastdate);
+  
+  
+      if (!totalPageRange || !totalPageRange.length) {
+        return []; // Eğer veri yoksa boş bir array döndür
+      }
+    
+      // Her ziyaretçi için dönüşüm işlemi
+      const resultsss = totalPageRange.map((visitor) => {
+        // İlk cihaz bilgisi varsa al, yoksa null
+        const firstLocation = visitor.data?.[0]?.referrer || null;
+    
+        return {
+          location: firstLocation, // İlk cihaz bilgisi       
+          date: visitor.date || null,  // Ziyaret tarihi
+        };
+      }).filter(item => item.referrer !== null);
 
     // Referrer alanına göre domain sayımı
     const referrerCounts = {};
@@ -643,20 +809,13 @@ const sourcesCard = async (body, query) => {
 const languagesCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
-    console.log("🚀 ~ languagesCard ~ lastdate:", lastdate);
-    console.log("🚀 ~ languagesCard ~ firstdate:", firstdate);
+
 
     // Veritabanından gerekli veriyi çek
     const totalPageResult = await App.find({ appId: body.appId }).select(
       "visitor.language visitor.date "
     );
 
-    // "page_view" türündeki verileri filtrele
-    // const totalPage = totalPageResult.flatMap((app) =>
-    //   app.visitor.flatMap(
-    //     (visitor) => visitor.data.filter((item) => item.type === "page_view") // Sadece "page_view" türündeki verileri al
-    //   )
-    // );
 
     // Tarih aralığına göre filtreleme
     const totalPageRange = await filterVisitorsByDate(
@@ -706,4 +865,7 @@ module.exports = {
   locationCard,
   sourcesCard,
   languagesCard,
+  checkTrackingScript,
+  generateRandomCode,
+  getFavicon
 };
