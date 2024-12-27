@@ -1,4 +1,4 @@
-const { saveVisitor } = require("../services/appServices");
+
 const dataSockets = require("./dataSockets");
 const userSockets = require("./userSockets");
 
@@ -19,7 +19,6 @@ module.exports = (io) => {
 
         io.to(data.appId).emit("activeUsers", activeUsers[data.appId]?.length);
 
-        saveVisitor(data);
       } catch (error) {
         console.log("🚀 ~ socket - register ~ error:", error);
         auditLogs.error("" || "User", "socket", "register", error);
