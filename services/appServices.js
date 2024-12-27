@@ -4,6 +4,7 @@ const auditLogs = require("../lib/auditLogs");
 const moment = require("moment");
 const CustomError = require("../lib/error");
 const _enum = require("../config/enum");
+const puppeteer = require("puppeteer");
 
 // Domaini referrer URL'sinden dinamik olarak çıkartan fonksiyon
 const getDomainFromReferrer = (referrer) => {
@@ -12,6 +13,62 @@ const getDomainFromReferrer = (referrer) => {
     return url.hostname.replace("www.", ""); // 'www.' kısmını kaldır
   } catch (error) {
     return "Direct/None"; // Referrer yoksa 'Direct/None' olarak kabul et
+  }
+};
+
+const getScreenshot = async (domain) => {
+  try {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--start-maximized'],
+    });
+    const page = await browser.newPage();
+    // // Tarayıcıyı başlat
+    // const browser = await puppeteer.launch();
+    // const page = await browser.newPage();
+
+    // İlgili siteyi aç
+    // await page.goto(`https://${domain}`, { waitUntil: "networkidle0" });
+
+    await page.goto(`https://${domain}`, { waitUntil: "networkidle2" });
+
+    // Sayfa yüklendikten sonra kısa bir bekleme süresi
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 saniye bekleme süresi
+
+    await page.waitForFunction(() => document.readyState === "complete");
+
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    );
+
+    await page.setViewport({
+      width: 1536,
+      height: 864,
+      deviceScaleFactor: 1,
+    });
+
+
+
+    // Screenshot al
+    await page.screenshot({
+      path: "screenshot.png",
+    });
+
+    console.log("Belirli bir alan için screenshot alındı.");
+
+    const area = { x: 0, y: 0, width: 1536, height: 864 }; // Örnek alan
+
+    await page.screenshot({
+      path: "screenshot.png",
+    });
+
+    console.log(
+      'Screenshot başarıyla alındı ve "screenshot.png" olarak kaydedildi.'
+    );
+    await browser.close();
+  } catch (error) {
+    // Hata durumunda log at
+    console.error("Screenshot alma sırasında bir hata oluştu:", error);
   }
 };
 
@@ -35,13 +92,14 @@ const getFavicon = async ({ domain }) => {
   if (faviconUrl) {
     console.log("Favicon URL:", faviconUrl);
   } else {
-    faviconUrl = "https://cdn.linatechnologies.com/img/tuana/icon_not_found.jpg"
+    faviconUrl =
+      "https://cdn.linatechnologies.com/img/tuana/icon_not_found.jpg";
   }
 
   // Tarayıcıyı kapat
   await browser.close();
 
-  return faviconUrl
+  return faviconUrl;
 };
 
 const generateRandomCode = () => {
@@ -160,10 +218,10 @@ const filterVisitorsByDate = (visitors, firstdate, lastdate) => {
   }
 };
 
-const saveTrackEvent = async (io, socket, data) => {
+const saveTrackEvent = async (data) => {
   try {
     const result = await App.findOne({ appId: data.appId });
-    console.log("🚀 ~ saveTrackEvent ~ data:", data);
+    //console.log("🚀 ~ saveTrackEvent ~ data:", data);
 
     if (!result) {
       // throw new CustomError(
@@ -301,41 +359,108 @@ const saveTrackEvent = async (io, socket, data) => {
   }
 };
 
-const saveVisitor = async (data) => {
+const trackMouseMovement = async (data) => {
   try {
-    // const findIp = await App.findOne(
-    //   { appId: data.appId, "visitor.visitorId": data.visitorId },
-    //   { "visitor.$": 1 }
-    // );
-    // if (!findIp) {
-    //   await App.findOneAndUpdate(
-    //     { appId: data.appId },
-    //     {
-    //       $push: {
-    //         visitor: { visitorId: data.visitorId, new: true, date: new Date() },
-    //       },
-    //     },
-    //     { new: true }
-    //   );
-    // } else {
-    //   await App.findOneAndUpdate(
-    //     { appId: data.appId },
-    //     {
-    //       $push: {
-    //         visitor: {
-    //           visitorId: data.visitorId,
-    //           new: false,
-    //           date: new Date(),
-    //         },
-    //       },
-    //     },
-    //     { new: true }
-    //   );
-    // }
+    console.log("🚀 ~ trackMouseMovement ~ data:", data);
+    const { appId, mouseMovement, url, details, time } = data;
+
+    // Filtre: `time` alanı olmayan mouse hareketlerini çıkar
+    const filteredMouseMovement = mouseMovement.filter((m) => m.time);
+
+    // `coord` yapısını organize et
+    const coord = {
+      time: new Date(time),
+      values: filteredMouseMovement.map(({ x, y, time }) => ({
+        x,
+        y,
+        time: new Date(time),
+      })),
+    };
+
+    // MongoDB'de `appId` ile belgeyi bul ve güncelle
+    const existingApp = await App.findOne({ appId });
+
+    if (existingApp) {
+      // `movements` içinde `url` kontrolü yap
+      const existingMovement = existingApp.movements.find((m) => m.url === url);
+
+      if (existingMovement) {
+        // `coord.time` ile eşleşen bir `coord` var mı kontrol et
+        const existingCoord = existingMovement.coord.find((c) => {
+          const coordDate = new Date(c.time);
+          const inputDate = new Date(time);
+
+          // Gün, ay ve yıl bazında karşılaştırma yap
+          return (
+            coordDate.getFullYear() === inputDate.getFullYear() &&
+            coordDate.getMonth() === inputDate.getMonth() &&
+            coordDate.getDate() === inputDate.getDate()
+          );
+        });
+
+        if (existingCoord) {
+          // Eşleşen `coord` bulundu, `values` dizisine ekleme yap
+          filteredMouseMovement.forEach(({ x, y, time }) => {
+            existingCoord.values.push({ x, y, time: new Date(time) });
+          });
+
+          // MongoDB'de `values` alanını güncelle
+          await App.updateOne(
+            { appId, "movements.url": url, "movements.coord.time": time },
+            {
+              $push: {
+                "movements.$[urlMatch].coord.$[timeMatch].values": {
+                  $each: filteredMouseMovement.map(({ x, y, time }) => ({
+                    x,
+                    y,
+                    time: new Date(time),
+                  })),
+                },
+              },
+            },
+            {
+              arrayFilters: [
+                { "urlMatch.url": url },
+                { "timeMatch.time": new Date(time) },
+              ],
+            }
+          );
+        } else {
+          // `coord.time` eşleşmedi, yeni bir `coord` oluştur
+          await App.updateOne(
+            { appId, "movements.url": url },
+            {
+              $push: {
+                "movements.$.coord": coord,
+              },
+            }
+          );
+        }
+      } else {
+        // `movements` içinde `url` eşleşmedi, yeni bir `movement` oluştur
+        await App.updateOne(
+          { appId },
+          {
+            $push: {
+              movements: {
+                details,
+                url,
+                coord: [coord],
+              },
+            },
+          }
+        );
+      }
+    } else {
+      // Eğer `appId` bulunamazsa hata ver veya yeni belge oluştur
+      throw new Error(
+        `Belirtilen appId: ${appId} ile eşleşen bir veri bulunamadı.`
+      );
+    }
   } catch (error) {
-    console.log("🚀 ~ saveVisitor ~ error:", error);
-    auditLogs.error("" || "User", "appServices", "saveVisitor", error);
-    logger.error("" || "User", "appServices", "saveVisitor", error);
+    console.log("🚀 ~ trackMouseMovement ~ error:", error);
+    auditLogs.error("" || "User", "appServices", "trackMouseMovement", error);
+    logger.error("" || "User", "appServices", "trackMouseMovement", error);
   }
 };
 
@@ -473,8 +598,6 @@ const calculateSessionDuration = async (body) => {
     const minutes = Math.floor(averageDurationInSeconds / 60);
     const seconds = Math.floor(averageDurationInSeconds % 60);
 
-    console.log(`Ortalama Oturum Süresi: ${minutes} dakika ${seconds} saniye`);
-
     return { minutes, seconds };
   } catch (error) {
     console.log("🚀 ~ calculateSessionDuration ~ error:", error);
@@ -563,27 +686,21 @@ const deviceCard = async (body, query) => {
   try {
     let { firstdate, lastdate } = query;
 
-
     // const totalPageResult = await App.find({ appId: body.appId }).select(
     //   "visitor.data.userDevice visitor.data.date visitor.data.type"
     // );
 
-  
     // const totalPage = totalPageResult.flatMap((app) =>
     //   app.visitor.flatMap((visitor) =>
     //     visitor.data.filter((item) => item.type === "page_view")
     //   )
     // );
 
-
     // const totalPageRange = filterVisitorsByDate(totalPage, firstdate, lastdate);
 
-    
-  
     const totalPageResult = await App.find({ appId: body.appId }).select(
       "visitor.date visitor.data.userDevice"
     );
-
 
     // Tarih aralığına göre filtreleme
     const totalPageRange = await filterVisitorsByDate(
@@ -595,18 +712,19 @@ const deviceCard = async (body, query) => {
     if (!totalPageRange || !totalPageRange.length) {
       return []; // Eğer veri yoksa boş bir array döndür
     }
-  
-    // Her ziyaretçi için dönüşüm işlemi
-    const result = totalPageRange.map((visitor) => {
-      // İlk cihaz bilgisi varsa al, yoksa null
-      const firstUserDevice = visitor.data?.[0]?.userDevice || null;
-  
-      return {
-        userDevice: firstUserDevice, // İlk cihaz bilgisi       
-        date: visitor.date || null,  // Ziyaret tarihi
-      };
-    }).filter(item => item.userDevice !== null);
 
+    // Her ziyaretçi için dönüşüm işlemi
+    const result = totalPageRange
+      .map((visitor) => {
+        // İlk cihaz bilgisi varsa al, yoksa null
+        const firstUserDevice = visitor.data?.[0]?.userDevice || null;
+
+        return {
+          userDevice: firstUserDevice, // İlk cihaz bilgisi
+          date: visitor.date || null, // Ziyaret tarihi
+        };
+      })
+      .filter((item) => item.userDevice !== null);
 
     return result;
   } catch (error) {
@@ -676,27 +794,28 @@ const locationCard = async (body, query) => {
       "visitor.date visitor.data.location"
     );
 
+    const totalPageRange = filterVisitorsByDate(
+      totalPageResult[0].visitor,
+      firstdate,
+      lastdate
+    );
 
-    const totalPageRange = filterVisitorsByDate(totalPageResult[0].visitor, firstdate, lastdate);
+    // if (!totalPageRange || !totalPageRange.length) {
+    //   return []; // Eğer veri yoksa boş bir array döndür
+    // }
 
-
-    if (!totalPageRange || !totalPageRange.length) {
-      return []; // Eğer veri yoksa boş bir array döndür
-    }
-  
     // Her ziyaretçi için dönüşüm işlemi
-    const resultsss = totalPageRange.map((visitor) => {
-      // İlk cihaz bilgisi varsa al, yoksa null
-      const firstLocation = visitor.data?.[0]?.location || null;
-  
-      return {
-        location: firstLocation, // İlk cihaz bilgisi       
-        date: visitor.date || null,  // Ziyaret tarihi
-      };
-    }).filter(item => item.location !== null);
+    const resultsss = totalPageRange
+      .map((visitor) => {
+        // İlk cihaz bilgisi varsa al, yoksa null
+        const firstLocation = visitor.data?.[0]?.location || null;
 
-
- 
+        return {
+          location: firstLocation, // İlk cihaz bilgisi
+          date: visitor.date || null, // Ziyaret tarihi
+        };
+      })
+      .filter((item) => item.location !== null);
 
     // Ülke bazlı benzersiz ziyaretçi sayısını hesapla
     const countriesData = {};
@@ -729,53 +848,33 @@ const sourcesCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
 
-    // // Veritabanından gerekli visitor verisini çek
-    // const totalPageResult = await App.find({ appId: body.appId }).select(
-    //   "visitor"
-    // );
+    // Tüm data alanını al
+    const totalPageResult = await App.find({ appId: body.appId }).select(
+      "visitor.date visitor.data.referrer"
+    );
 
-    // // "page_view" türündeki verileri düzleştir ve filtrele
-    // const totalPage = totalPageResult.flatMap((app) =>
-    //   app.visitor.flatMap((visitor) =>
-    //     visitor.data
-    //       .filter((item) => item.type === "page_view") // Sadece "page_view" türündeki verileri al
-    //       .map((item) => ({
-    //         referrer: item.referrer,
-    //         date: item.date,
-    //       }))
-    //   )
-    // );
+    const totalPageRange = filterVisitorsByDate(
+      totalPageResult[0].visitor,
+      firstdate,
+      lastdate
+    );
 
-    // // Tarih aralığına göre filtreleme
-    // const totalPageRange = await filterVisitorsByDate(
-    //   totalPage,
-    //   firstdate,
-    //   lastdate
-    // );
+    // if (!totalPageRange || !totalPageRange.length) {
+    //   return []; // Eğer veri yoksa boş bir array döndür
+    // }
 
-      // Tüm data alanını al
-      const totalPageResult = await App.find({ appId: body.appId }).select(
-        "visitor.date visitor.data.referrer"
-      );
-  
-  
-      const totalPageRange = filterVisitorsByDate(totalPageResult[0].visitor, firstdate, lastdate);
-  
-  
-      if (!totalPageRange || !totalPageRange.length) {
-        return []; // Eğer veri yoksa boş bir array döndür
-      }
-    
-      // Her ziyaretçi için dönüşüm işlemi
-      const resultsss = totalPageRange.map((visitor) => {
+    // Her ziyaretçi için dönüşüm işlemi
+    const resultsss = totalPageRange
+      .map((visitor) => {
         // İlk cihaz bilgisi varsa al, yoksa null
         const firstLocation = visitor.data?.[0]?.referrer || null;
-    
+
         return {
-          location: firstLocation, // İlk cihaz bilgisi       
-          date: visitor.date || null,  // Ziyaret tarihi
+          location: firstLocation, // İlk cihaz bilgisi
+          date: visitor.date || null, // Ziyaret tarihi
         };
-      }).filter(item => item.referrer !== null);
+      })
+      .filter((item) => item.referrer !== null);
 
     // Referrer alanına göre domain sayımı
     const referrerCounts = {};
@@ -810,12 +909,10 @@ const languagesCard = async (body, query) => {
   try {
     const { firstdate, lastdate } = query;
 
-
     // Veritabanından gerekli veriyi çek
     const totalPageResult = await App.find({ appId: body.appId }).select(
       "visitor.language visitor.date "
     );
-
 
     // Tarih aralığına göre filtreleme
     const totalPageRange = await filterVisitorsByDate(
@@ -854,7 +951,7 @@ const languagesCard = async (body, query) => {
 };
 
 module.exports = {
-  saveVisitor,
+  trackMouseMovement,
   saveTrackEvent,
   findTopPage,
   newVisitors,
@@ -867,5 +964,6 @@ module.exports = {
   languagesCard,
   checkTrackingScript,
   generateRandomCode,
-  getFavicon
+  getFavicon,
+  getScreenshot,
 };

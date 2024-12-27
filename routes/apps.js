@@ -20,6 +20,7 @@ const {
   checkTrackingScript,
   generateRandomCode,
   getFavicon,
+  getScreenshot,
 } = require("../services/appServices");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
@@ -27,7 +28,6 @@ const getPlatormData = require("../lib/playwright");
 const AI = require("../db/models/Ai");
 
 const router = require("express").Router();
-
 
 router.post("/new-visitor", async (req, res) => {
   try {
@@ -90,12 +90,10 @@ router.post("/avg-duration", async (req, res) => {
 router.post("/line-card", async (req, res) => {
   try {
     const { body } = req;
-    console.log("🚀 ~ /line-card ~ body:", body)
+    console.log("🚀 ~ /line-card ~ body:", body);
     const query = body.query;
 
-   
-
-   // console.log("🚀 ~ lineCard ~ query:", query);
+    // console.log("🚀 ~ lineCard ~ query:", query);
 
     const result = await lineCard(body, query);
 
@@ -187,7 +185,7 @@ router.post("/sources-card", async (req, res) => {
 router.post("/languages-card", async (req, res) => {
   try {
     const { body } = req;
-  
+
     const query = body.query;
 
     const result = await languagesCard(body, query);
@@ -203,7 +201,6 @@ router.post("/languages-card", async (req, res) => {
     logger.error("" || "User", "apps-route", "POST /languages-card", error);
   }
 });
-
 
 router.get("/get-appid", async (req, res, next) => {
   try {
@@ -246,7 +243,7 @@ router.post("/create-project", async (req, res, next) => {
       type: body.type,
       project_name: body.project_name,
       active: true,
-      favicon: body.type == "Web" ? getFavicon() : ""
+      favicon: body.type == "Web" ? getFavicon() : "",
     }).save();
 
     await User.findByIdAndUpdate(
@@ -257,30 +254,30 @@ router.post("/create-project", async (req, res, next) => {
       { new: true }
     );
 
-    const userInfo = await User.findOne({appId:appId})
+    const userInfo = await User.findOne({ appId: appId });
 
     const planValues = {
       free: 5,
       mini: 10,
       pro: 20,
-      premium: 0
+      premium: 0,
     };
 
     const tokenValues = {
       free: 1024,
       mini: 2048,
       pro: 3072,
-      premium: 4096
+      premium: 4096,
     };
 
     const ai = await AI({
       userId: findRefreshToken.userId,
       appId: body.appId,
       limitExist: userInfo.plans == "free" ? true : false,
-      limit:  planValues[userInfo.plans] ?? null,
+      limit: planValues[userInfo.plans] ?? null,
       wordLimit: tokenValues[userInfo.plans] ?? null,
-      ai_limit:  planValues[userInfo.plans] ?? null,
-    }).save()
+      ai_limit: planValues[userInfo.plans] ?? null,
+    }).save();
 
     return res
       .status(_enum.HTTP_CODES.OK)
@@ -518,6 +515,113 @@ router.post("/track-exit-event", async (req, res, next) => {
   }
 });
 
+router.post("/get-heatmap", async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    const { body } = req;
+    const { appId, query } = body;
+    const { firstdate, lastdate } = query;
 
+    // Tarih filtresi
+    const dateFilter = {};
+    if (firstdate) {
+      dateFilter.$gte = new Date(firstdate); // İlk tarih
+    }
+    if (lastdate) {
+      dateFilter.$lt = new Date(
+        new Date(lastdate).setDate(new Date(lastdate).getDate() + 1)
+      ); // Sonraki gün başlangıcı
+
+      // Sorgu
+      const data = await App.aggregate([
+        { $match: { appId: appId } }, // App ID'ye göre filtreleme
+        { $unwind: "$movements" }, // movements dizisini açma
+        { $unwind: "$movements.coord" }, // coord dizisini açma
+        {
+          $match: {
+            "movements.coord.time": dateFilter, // Tarih filtresi
+          },
+        },
+        {
+          $group: {
+            _id: "$movements.url", // URL bazında gruplandırma
+            details: { $first: "$movements.details" }, // İlk details bilgisini al
+            allMovements: {
+              $push: {
+                x: "$movements.coord.values.x",
+                y: "$movements.coord.values.y",
+              },
+            },
+          },
+        },
+        { $sort: { totalMovements: -1 } }, // Toplam hareket sayısına göre sırala
+        { $limit: 3 }, // İlk 3 sayfayı al
+        {
+          $project: {
+            _id: 0, // ID'yi hariç tut
+            url: "$_id",
+            details: 1,
+            movements: {
+              $reduce: {
+                input: "$allMovements", // Koordinatları eşleştir
+                initialValue: [],
+                in: {
+                  $concatArrays: [
+                    "$$value",
+                    {
+                      $map: {
+                        input: { $range: [0, { $size: "$$this.x" }] }, // X ve Y eşleştirme
+                        as: "index",
+                        in: {
+                          x: { $arrayElemAt: ["$$this.x", "$$index"] },
+                          y: { $arrayElemAt: ["$$this.y", "$$index"] },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      ]);
+    }
+
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        movements: data,
+      })
+    );
+  } catch (error) {
+    auditLogs.error("" || "User", "apps-route", "/get-heatmap", error);
+    logger.error("" || "User", "apps-route", "/get-heatmap", error);
+    res
+      .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
+      .json(Response.errorResponse(error));
+  }
+});
+
+router.get("/get-screenshot", async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    const { body } = req;
+
+    getScreenshot("www.tuanalytics.com");
+
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        status: true,
+      })
+    );
+  } catch (error) {
+    auditLogs.error("" || "User", "apps-route", "/get-heatmap", error);
+    logger.error("" || "User", "apps-route", "/get-heatmap", error);
+    res
+      .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
+      .json(Response.errorResponse(error));
+  }
+});
 
 module.exports = router;

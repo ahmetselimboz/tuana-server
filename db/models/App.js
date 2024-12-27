@@ -177,6 +177,37 @@ const Schema = mongoose.Schema(
         },
       },
     ],
+
+    movements: [
+      {
+        details: {
+          type: Object,
+        },
+        url: {
+          type: String,
+          trim: true,
+          required: true,
+        },
+        coord: [
+          {
+            time: {
+              type: Date,
+              default: Date.now,
+              trim: true,
+            },
+            values: [
+              {
+                x: Number,
+                y: Number,
+                time: {
+                  type: Date,
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
   },
   { versionKey: false, timestamps: true }
 );
@@ -184,6 +215,8 @@ const Schema = mongoose.Schema(
 Schema.index({ userId: 1, appId: 1 });
 Schema.index({ "visitor.visitorId": 1 });
 Schema.index({ "visitor.date": 1 });
+Schema.index({ "movements.coord.time": 1 });
+
 
 const App = mongoose.model("App", Schema);
 
