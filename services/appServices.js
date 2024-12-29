@@ -74,11 +74,14 @@ const getFavicon = async (domain) => {
   try {
     console.log("🚀 ~ getFavicon ~ domain:", domain)
     // Tarayıcıyı başlat
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
     const page = await browser.newPage();
 
     // İlgili siteyi aç
-    await page.goto(`https://${domain}`);
+    await page.goto(`https://${domain}`, { waitUntil: "networkidle2" });
 
     // Favicon'un URL'sini almak için bir sorgu çalıştır
     const faviconUrl = await page.evaluate(() => {
