@@ -72,6 +72,7 @@ const getScreenshot = async (domain) => {
 
 const getFavicon = async (domain) => {
   try {
+    console.log("🚀 ~ getFavicon ~ domain:", domain)
     // Tarayıcıyı başlat
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
@@ -97,7 +98,7 @@ const getFavicon = async (domain) => {
 
     // Tarayıcıyı kapat
     await browser.close();
-
+    console.log("🚀 ~ getFavicon ~ domain:", domain)
     return faviconUrl;
   } catch (error) {
     console.error("Hata oluştu:", error);
@@ -116,6 +117,8 @@ const generateRandomCode = () => {
 };
 
 const checkTrackingScript = async (appId, domain) => {
+  console.log("🚀 ~ checkTrackingScript ~ appId:", appId)
+  console.log("🚀 ~ checkTrackingScript ~ domain:", domain)
   const browser = await puppeteer.launch({
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -177,6 +180,9 @@ const checkTrackingScript = async (appId, domain) => {
     await browser.close();
 
     // Tüm koşullar sağlanıyorsa script doğru eklenmiştir
+
+    console.log("🚀 ~ checkTrackingScript ~ appId:", appId)
+    console.log("🚀 ~ checkTrackingScript ~ domain:", domain)
     return hasTrackingScript && hasConfigTrack && hasDomainTrack;
   } catch (error) {
     console.error("Hata oluştu:", error);
