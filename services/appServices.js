@@ -72,7 +72,7 @@ const getScreenshot = async (domain) => {
   }
 };
 
-const getFavicon = async ({ domain }) => {
+const getFavicon = async (domain) => {
   // Tarayıcıyı başlat
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
@@ -362,7 +362,12 @@ const saveTrackEvent = async (data) => {
 const trackMouseMovement = async (data) => {
   try {
     console.log("🚀 ~ trackMouseMovement ~ data:", data);
+ 
     const { appId, mouseMovement, url, details, time } = data;
+    // await App.updateOne(
+    //   { appId: appId }, // Belgeyi bulma kriteri
+    //   { $unset: { movements: 1 } } // `movements` alanını siler
+    // )
 
     // Filtre: `time` alanı olmayan mouse hareketlerini çıkar
     const filteredMouseMovement = mouseMovement.filter((m) => m.time);
@@ -370,9 +375,11 @@ const trackMouseMovement = async (data) => {
     // `coord` yapısını organize et
     const coord = {
       time: new Date(time),
-      values: filteredMouseMovement.map(({ x, y, time }) => ({
+      values: filteredMouseMovement.map(({ x, y, time, screenWidth, screenHeight }) => ({
         x,
         y,
+        screenWidth,
+        screenHeight,
         time: new Date(time),
       })),
     };
@@ -400,8 +407,8 @@ const trackMouseMovement = async (data) => {
 
         if (existingCoord) {
           // Eşleşen `coord` bulundu, `values` dizisine ekleme yap
-          filteredMouseMovement.forEach(({ x, y, time }) => {
-            existingCoord.values.push({ x, y, time: new Date(time) });
+          filteredMouseMovement.forEach(({ x, y, time,screenWidth, screenHeight }) => {
+            existingCoord.values.push({ x, y, time: new Date(time), screenWidth, screenHeight });
           });
 
           // MongoDB'de `values` alanını güncelle
@@ -410,9 +417,11 @@ const trackMouseMovement = async (data) => {
             {
               $push: {
                 "movements.$[urlMatch].coord.$[timeMatch].values": {
-                  $each: filteredMouseMovement.map(({ x, y, time }) => ({
+                  $each: filteredMouseMovement.map(({ x, y, time, screenWidth, screenHeight }) => ({
                     x,
                     y,
+                    screenWidth, 
+                    screenHeight,
                     time: new Date(time),
                   })),
                 },

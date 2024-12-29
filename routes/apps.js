@@ -243,7 +243,7 @@ router.post("/create-project", async (req, res, next) => {
       type: body.type,
       project_name: body.project_name,
       active: true,
-      favicon: body.type == "Web" ? getFavicon() : "",
+      favicon: body.type == "Web" ? await getFavicon(body.domain) : "",
     }).save();
 
     await User.findByIdAndUpdate(
@@ -254,7 +254,8 @@ router.post("/create-project", async (req, res, next) => {
       { new: true }
     );
 
-    const userInfo = await User.findOne({ appId: appId });
+    const userInfo = await User.findOne({ _id:findRefreshToken.userId });
+  
 
     const planValues = {
       free: 5,
@@ -273,10 +274,10 @@ router.post("/create-project", async (req, res, next) => {
     const ai = await AI({
       userId: findRefreshToken.userId,
       appId: body.appId,
-      limitExist: userInfo.plans == "free" ? true : false,
-      limit: planValues[userInfo.plans] ?? null,
-      wordLimit: tokenValues[userInfo.plans] ?? null,
-      ai_limit: planValues[userInfo.plans] ?? null,
+      limitExist: userInfo?.plans == "free" ? true : false,
+      limit: planValues[userInfo?.plans] ?? null,
+      wordLimit: tokenValues[userInfo?.plans] ?? null,
+      ai_limit: planValues[userInfo?.plans] ?? null,
     }).save();
 
     return res
@@ -389,10 +390,10 @@ router.get("/get-project-list", async (req, res, next) => {
       .select("apps");
 
     const sortedApps = findAppList.apps.sort((a, b) => {
-      if (a.appId.pin === b.appId.pin) {
-        return new Date(b.appId.createdAt) - new Date(a.appId.createdAt);
+      if (a.appId?.pin === b.appId?.pin) {
+        return new Date(b.appId?.createdAt) - new Date(a.appId?.createdAt);
       }
-      return b.appId.pin - a.appId.pin;
+      return b.appId?.pin - a.appId?.pin;
     });
 
     findAppList.apps = sortedApps;
@@ -531,61 +532,72 @@ router.post("/get-heatmap", async (req, res, next) => {
       dateFilter.$lt = new Date(
         new Date(lastdate).setDate(new Date(lastdate).getDate() + 1)
       ); // Sonraki gün başlangıcı
+    }
 
-      // Sorgu
-      const data = await App.aggregate([
-        { $match: { appId: appId } }, // App ID'ye göre filtreleme
-        { $unwind: "$movements" }, // movements dizisini açma
-        { $unwind: "$movements.coord" }, // coord dizisini açma
-        {
-          $match: {
-            "movements.coord.time": dateFilter, // Tarih filtresi
-          },
+    // Sorgu
+    const data = await App.aggregate([
+      { $match: { appId: appId } }, // App ID'ye göre filtreleme
+      { $unwind: "$movements" }, // movements dizisini açma
+      { $unwind: "$movements.coord" }, // coord dizisini açma
+      { $sort: { "movements.coord.time": 1 } }, // Koordinatları zaman sırasına göre sırala
+      {
+        $match: {
+          "movements.coord.time": dateFilter, // Tarih filtresi
         },
-        {
-          $group: {
-            _id: "$movements.url", // URL bazında gruplandırma
-            details: { $first: "$movements.details" }, // İlk details bilgisini al
-            allMovements: {
-              $push: {
-                x: "$movements.coord.values.x",
-                y: "$movements.coord.values.y",
-              },
+      },
+      {
+        $group: {
+          _id: "$movements.url", // URL bazında gruplandırma
+          details: { $first: "$movements.details" }, // İlk details bilgisini al
+          totalMovements: { $sum: 1 }, // Toplam hareket sayısı
+          allMovements: {
+            $push: {
+              x: "$movements.coord.values.x",
+              y: "$movements.coord.values.y",
+              screenWidth: "$movements.coord.values.screenWidth", // Ekran genişliği
+              screenHeight: "$movements.coord.values.screenHeight", // Ekran yüksekliği
             },
           },
         },
-        { $sort: { totalMovements: -1 } }, // Toplam hareket sayısına göre sırala
-        { $limit: 3 }, // İlk 3 sayfayı al
-        {
-          $project: {
-            _id: 0, // ID'yi hariç tut
-            url: "$_id",
-            details: 1,
-            movements: {
-              $reduce: {
-                input: "$allMovements", // Koordinatları eşleştir
-                initialValue: [],
-                in: {
-                  $concatArrays: [
-                    "$$value",
-                    {
-                      $map: {
-                        input: { $range: [0, { $size: "$$this.x" }] }, // X ve Y eşleştirme
-                        as: "index",
-                        in: {
-                          x: { $arrayElemAt: ["$$this.x", "$$index"] },
-                          y: { $arrayElemAt: ["$$this.y", "$$index"] },
+      },
+      { $sort: { totalMovements: -1, _id: 1 } }, // Deterministik sıralama
+      { $limit: 3 }, // İlk 3 sayfayı al
+      {
+        $project: {
+          _id: 0, // ID'yi hariç tut
+          url: "$_id",
+          details: 1,
+          movements: {
+            $reduce: {
+              input: "$allMovements", // Koordinatları eşleştir
+              initialValue: [],
+              in: {
+                $concatArrays: [
+                  "$$value",
+                  {
+                    $map: {
+                      input: { $range: [0, { $size: "$$this.x" }] }, // X ve Y eşleştirme
+                      as: "index",
+                      in: {
+                        x: { $arrayElemAt: ["$$this.x", "$$index"] },
+                        y: { $arrayElemAt: ["$$this.y", "$$index"] },
+                        screenWidth: {
+                          $arrayElemAt: ["$$this.screenWidth", "$$index"],
+                        },
+                        screenHeight: {
+                          $arrayElemAt: ["$$this.screenHeight", "$$index"],
                         },
                       },
                     },
-                  ],
-                },
+                  },
+                ],
               },
             },
           },
         },
-      ]);
-    }
+      },
+    ]);
+    
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({

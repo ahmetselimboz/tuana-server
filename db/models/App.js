@@ -199,6 +199,8 @@ const Schema = mongoose.Schema(
               {
                 x: Number,
                 y: Number,
+                screenWidth: Number,
+                screenHeight: Number,
                 time: {
                   type: Date,
                 },
