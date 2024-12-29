@@ -20,7 +20,7 @@ const getScreenshot = async (domain) => {
   try {
     const browser = await puppeteer.launch({
       headless: true,
-      args: ['--start-maximized'],
+      args: ["--start-maximized"],
     });
     const page = await browser.newPage();
     // // Tarayıcıyı başlat
@@ -47,8 +47,6 @@ const getScreenshot = async (domain) => {
       deviceScaleFactor: 1,
     });
 
-
-
     // Screenshot al
     await page.screenshot({
       path: "screenshot.png",
@@ -73,33 +71,39 @@ const getScreenshot = async (domain) => {
 };
 
 const getFavicon = async (domain) => {
-  // Tarayıcıyı başlat
-  const browser = await puppeteer.launch();
-  const page = await browser.newPage();
+  try {
+    // Tarayıcıyı başlat
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
 
-  // İlgili siteyi aç
-  await page.goto(`https://${domain}`);
+    // İlgili siteyi aç
+    await page.goto(`https://${domain}`);
 
-  // Favicon'un URL'sini almak için bir sorgu çalıştır
-  const faviconUrl = await page.evaluate(() => {
-    // Favicon'u <link> elementinden al
-    const linkElement =
-      document.querySelector("link[rel~='icon']") ||
-      document.querySelector("link[rel~='shortcut']");
-    return linkElement ? linkElement.href : null; // Favicon URL'sini döndür
-  });
+    // Favicon'un URL'sini almak için bir sorgu çalıştır
+    const faviconUrl = await page.evaluate(() => {
+      // Favicon'u <link> elementinden al
+      const linkElement =
+        document.querySelector("link[rel~='icon']") ||
+        document.querySelector("link[rel~='shortcut']");
+      return linkElement ? linkElement.href : null; // Favicon URL'sini döndür
+    });
 
-  if (faviconUrl) {
-    console.log("Favicon URL:", faviconUrl);
-  } else {
-    faviconUrl =
-      "https://cdn.linatechnologies.com/img/tuana/icon_not_found.jpg";
+    if (faviconUrl) {
+      console.log("Favicon URL:", faviconUrl);
+    } else {
+      faviconUrl =
+        "https://cdn.linatechnologies.com/img/tuana/icon_not_found.jpg";
+    }
+
+    // Tarayıcıyı kapat
+    await browser.close();
+
+    return faviconUrl;
+  } catch (error) {
+    console.error("Hata oluştu:", error);
+    await browser.close();
+    return false;
   }
-
-  // Tarayıcıyı kapat
-  await browser.close();
-
-  return faviconUrl;
 };
 
 const generateRandomCode = () => {
@@ -362,7 +366,7 @@ const saveTrackEvent = async (data) => {
 const trackMouseMovement = async (data) => {
   try {
     console.log("🚀 ~ trackMouseMovement ~ data:", data);
- 
+
     const { appId, mouseMovement, url, details, time } = data;
     // await App.updateOne(
     //   { appId: appId }, // Belgeyi bulma kriteri
@@ -375,13 +379,15 @@ const trackMouseMovement = async (data) => {
     // `coord` yapısını organize et
     const coord = {
       time: new Date(time),
-      values: filteredMouseMovement.map(({ x, y, time, screenWidth, screenHeight }) => ({
-        x,
-        y,
-        screenWidth,
-        screenHeight,
-        time: new Date(time),
-      })),
+      values: filteredMouseMovement.map(
+        ({ x, y, time, screenWidth, screenHeight }) => ({
+          x,
+          y,
+          screenWidth,
+          screenHeight,
+          time: new Date(time),
+        })
+      ),
     };
 
     // MongoDB'de `appId` ile belgeyi bul ve güncelle
@@ -407,9 +413,17 @@ const trackMouseMovement = async (data) => {
 
         if (existingCoord) {
           // Eşleşen `coord` bulundu, `values` dizisine ekleme yap
-          filteredMouseMovement.forEach(({ x, y, time,screenWidth, screenHeight }) => {
-            existingCoord.values.push({ x, y, time: new Date(time), screenWidth, screenHeight });
-          });
+          filteredMouseMovement.forEach(
+            ({ x, y, time, screenWidth, screenHeight }) => {
+              existingCoord.values.push({
+                x,
+                y,
+                time: new Date(time),
+                screenWidth,
+                screenHeight,
+              });
+            }
+          );
 
           // MongoDB'de `values` alanını güncelle
           await App.updateOne(
@@ -417,13 +431,15 @@ const trackMouseMovement = async (data) => {
             {
               $push: {
                 "movements.$[urlMatch].coord.$[timeMatch].values": {
-                  $each: filteredMouseMovement.map(({ x, y, time, screenWidth, screenHeight }) => ({
-                    x,
-                    y,
-                    screenWidth, 
-                    screenHeight,
-                    time: new Date(time),
-                  })),
+                  $each: filteredMouseMovement.map(
+                    ({ x, y, time, screenWidth, screenHeight }) => ({
+                      x,
+                      y,
+                      screenWidth,
+                      screenHeight,
+                      time: new Date(time),
+                    })
+                  ),
                 },
               },
             },
