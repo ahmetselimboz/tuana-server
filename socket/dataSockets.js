@@ -15,7 +15,7 @@ module.exports = (io, socket) => {
   });
   socket.on("trackMouseMovement", async (data) => {
     try {
-   
+      console.log("🚀 ~ trackMouseMovement ~ data:", data)
       trackMouseMovement(data);
     } catch (error) {
       console.log("🚀 ~ socket - trackMouseMovement ~ error:", error);
@@ -25,7 +25,7 @@ module.exports = (io, socket) => {
   });
   socket.on("trackClicks", async (data) => {
     try {
-      //console.log("🚀 ~ trackClicks ~ data:", data)
+      console.log("🚀 ~ trackClicks ~ data:", data)
       trackClicks(data);
     } catch (error) {
       console.log("🚀 ~ socket - trackClicks ~ error:", error);
