@@ -210,6 +210,38 @@ const Schema = mongoose.Schema(
         ],
       },
     ],
+    clicks: [
+      {
+        details: {
+          type: Object,
+        },
+        url: {
+          type: String,
+          trim: true,
+          required: true,
+        },
+        coord: [
+          {
+            time: {
+              type: Date,
+              default: Date.now,
+              trim: true,
+            },
+            values: [
+              {
+                x: Number,
+                y: Number,
+                screenWidth: Number,
+                screenHeight: Number,
+                time: {
+                  type: Date,
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
   },
   { versionKey: false, timestamps: true }
 );

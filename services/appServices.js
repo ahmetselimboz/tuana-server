@@ -374,7 +374,7 @@ const saveTrackEvent = async (data) => {
 
 const trackMouseMovement = async (data) => {
   try {
-    console.log("🚀 ~ trackMouseMovement ~ data:", data);
+   // console.log("🚀 ~ trackMouseMovement ~ data:", data);
 
     const { appId, mouseMovement, url, details, time } = data;
     // await App.updateOne(
@@ -495,6 +495,148 @@ const trackMouseMovement = async (data) => {
     console.log("🚀 ~ trackMouseMovement ~ error:", error);
     auditLogs.error("" || "User", "appServices", "trackMouseMovement", error);
     logger.error("" || "User", "appServices", "trackMouseMovement", error);
+  }
+};
+
+const trackClicks = async (data) => {
+  try {
+   //console.log("🚀 ~ trackClicks ~ data:", data);
+
+    const { appId, clicks, url, details, time } = data;
+    // await App.updateOne(
+    //   { appId: appId }, // Belgeyi bulma kriteri
+    //   { $unset: { movements: 1 } } // `movements` alanını siler
+    // )
+
+    // Filtre: `time` alanı olmayan mouse hareketlerini çıkar
+    const filteredClicks = clicks.filter((m) => m.time);
+
+    // `coord` yapısını organize et
+    const coord = {
+      time: new Date(time),
+      values: filteredClicks.map(
+        ({ x, y, time, screenWidth, screenHeight }) => ({
+          x,
+          y,
+          screenWidth,
+          screenHeight,
+          time: new Date(time),
+        })
+      ),
+    };
+    //console.log("🚀 ~ trackClicks ~ coord:", coord)
+
+    // MongoDB'de `appId` ile belgeyi bul ve güncelle
+    const existingApp = await App.findOne({ appId }).select('clicks');
+    //console.log("🚀 ~ trackClicks ~ existingApp:", existingApp)
+
+    if (existingApp) {
+      // `movements` içinde `url` kontrolü yap
+      const existingClicks = existingApp.clicks.find((m) => m.url === url);
+     
+     
+
+      if (existingClicks) {
+        // `coord.time` ile eşleşen bir `coord` var mı kontrol et
+        const existingCoord = existingClicks.coord.find((c) => {
+          const coordDate = new Date(c.time)
+          const inputDate = new Date(time)
+
+          // Gün, ay ve yıl bazında karşılaştırma yap
+          return (
+            coordDate.getFullYear() === inputDate.getFullYear() &&
+            coordDate.getMonth() === inputDate.getMonth() &&
+            coordDate.getDate() === inputDate.getDate()
+          );
+        });
+        //console.log("🚀 ~ trackClicks ~ existingClicks:", existingCoord)
+        if (existingCoord) {
+          // Eşleşen `coord` bulundu, `values` dizisine ekleme yap
+          filteredClicks.forEach(
+            ({ x, y, time, screenWidth, screenHeight }) => {
+              existingCoord.values.push({
+                x,
+                y,
+                time: new Date(time),
+                screenWidth,
+                screenHeight,
+              });
+            }
+          );
+          //console.log("🚀 ~ trackClicks ~ filteredClicks:", filteredClicks)
+
+          // MongoDB'de `values` alanını güncelle
+          const data = await App.updateOne(
+            {
+              appId,
+              "clicks.url": url,
+            },
+            {
+              $push: {
+                "clicks.$[urlMatch].coord.$[timeMatch].values": {
+                  $each: filteredClicks.map(({ x, y, time, screenWidth, screenHeight }) => ({
+                    x,
+                    y,
+                    screenWidth,
+                    screenHeight,
+                    time: new Date(time),
+                  })),
+                },
+              },
+            },
+            {
+              arrayFilters: [
+                { "urlMatch.url": url },
+                {
+                  "timeMatch.time": {
+                    $gte: new Date(new Date(time).setUTCHours(0, 0, 0, 0)),
+                    $lt: new Date(new Date(time).setUTCHours(24, 0, 0, 0)),
+                  },
+                },
+              ],
+            }
+          );
+          
+          
+          //console.log("🚀 ~ trackClicks ~ data:", data)
+          
+        } else {
+          // `coord.time` eşleşmedi, yeni bir `coord` oluştur
+          await App.updateOne(
+            { appId, "clicks.url": url },
+            {
+              $push: {
+                "clicks.$.coord": coord,
+              },
+            }
+          );
+        }
+      } else {
+        // `movements` içinde `url` eşleşmedi, yeni bir `movement` oluştur
+       await App.updateOne(
+          { appId },
+          {
+            $push: {
+              clicks: {
+                details,
+                url,
+                coord: [coord],
+              },
+            },
+          }
+        );
+
+      }
+    } else {
+    
+      throw new Error(
+        `Belirtilen appId: ${appId} ile eşleşen bir veri bulunamadı.`
+      );
+    }
+  } catch (error) {
+    console.log("🚀 ~ trackClicks ~ error:", error);
+    auditLogs.error("" || "User", "appServices", "trackClicks", error);
+    logger.error("" || "User", "appServices", "trackClicks", error);
   }
 };
 
@@ -1000,4 +1142,6 @@ module.exports = {
   generateRandomCode,
   getFavicon,
   getScreenshot,
+  trackClicks,
+  filterVisitorsByDate
 };

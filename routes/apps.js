@@ -21,6 +21,7 @@ const {
   generateRandomCode,
   getFavicon,
   getScreenshot,
+  filterVisitorsByDate,
 } = require("../services/appServices");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
@@ -90,7 +91,7 @@ router.post("/avg-duration", async (req, res) => {
 router.post("/line-card", async (req, res) => {
   try {
     const { body } = req;
-    console.log("🚀 ~ /line-card ~ body:", body);
+  
     const query = body.query;
 
     // console.log("🚀 ~ lineCard ~ query:", query);
@@ -516,7 +517,7 @@ router.post("/track-exit-event", async (req, res, next) => {
   }
 });
 
-router.post("/get-heatmap", async (req, res, next) => {
+router.post("/get-mouse-movements", async (req, res, next) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     const { body } = req;
@@ -606,8 +607,108 @@ router.post("/get-heatmap", async (req, res, next) => {
       })
     );
   } catch (error) {
-    auditLogs.error("" || "User", "apps-route", "/get-heatmap", error);
-    logger.error("" || "User", "apps-route", "/get-heatmap", error);
+    auditLogs.error("" || "User", "apps-route", "/get-mouse-movements", error);
+    logger.error("" || "User", "apps-route", "/get-mouse-movements", error);
+    res
+      .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
+      .json(Response.errorResponse(error));
+  }
+});
+
+router.post("/get-clicks", async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    const { body } = req;
+    console.log("🚀 ~ router.post ~ body:", body)
+    const { appId, query } = body;
+    const { firstdate, lastdate } = query;
+
+
+    // Tarih filtresi
+    const dateFilter = {};
+    if (firstdate) {
+      dateFilter.$gte = new Date(firstdate); // İlk tarih
+    }
+    if (lastdate) {
+      dateFilter.$lt = new Date(
+        new Date(lastdate).setDate(new Date(lastdate).getDate() + 1)
+      ); // Sonraki gün başlangıcı
+    }
+
+    // Sorgu
+    const data = await App.aggregate([
+      { $match: { appId: appId } }, // App ID'ye göre filtreleme
+      { $unwind: "$clicks" }, // movements dizisini açma
+      { $unwind: "$clicks.coord" }, // coord dizisini açma
+      { $sort: { "clicks.coord.time": 1 } }, // Koordinatları zaman sırasına göre sırala
+      {
+        $match: {
+          "clicks.coord.time": dateFilter, // Tarih filtresi
+        },
+      },
+      {
+        $group: {
+          _id: "$clicks.url", // URL bazında gruplandırma
+          details: { $first: "$clicks.details" }, // İlk details bilgisini al
+          totalMovements: { $sum: 1 }, // Toplam hareket sayısı
+          allMovements: {
+            $push: {
+              x: "$clicks.coord.values.x",
+              y: "$clicks.coord.values.y",
+              screenWidth: "$clicks.coord.values.screenWidth", // Ekran genişliği
+              screenHeight: "$clicks.coord.values.screenHeight", // Ekran yüksekliği
+            },
+          },
+        },
+      },
+      { $sort: { totalMovements: -1, _id: 1 } }, // Deterministik sıralama
+      { $limit: 3 }, // İlk 3 sayfayı al
+      {
+        $project: {
+          _id: 0, // ID'yi hariç tut
+          url: "$_id",
+          details: 1,
+          clicks: {
+            $reduce: {
+              input: "$allMovements", // Koordinatları eşleştir
+              initialValue: [],
+              in: {
+                $concatArrays: [
+                  "$$value",
+                  {
+                    $map: {
+                      input: { $range: [0, { $size: "$$this.x" }] }, // X ve Y eşleştirme
+                      as: "index",
+                      in: {
+                        x: { $arrayElemAt: ["$$this.x", "$$index"] },
+                        y: { $arrayElemAt: ["$$this.y", "$$index"] },
+                        screenWidth: {
+                          $arrayElemAt: ["$$this.screenWidth", "$$index"],
+                        },
+                        screenHeight: {
+                          $arrayElemAt: ["$$this.screenHeight", "$$index"],
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+    ]);
+    
+
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        clicks: data,
+      })
+    );
+  } catch (error) {
+    auditLogs.error("" || "User", "apps-route", "/get-clicks", error);
+    logger.error("" || "User", "apps-route", "/get-clicks", error);
     res
       .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
       .json(Response.errorResponse(error));
@@ -618,8 +719,11 @@ router.get("/get-screenshot", async (req, res, next) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     const { body } = req;
+    console.log("🚀 ~ router.post ~ body:", body)
+    const { appId, query } = body;
+    const { firstdate, lastdate } = query;
 
-    getScreenshot("www.tuanalytics.com");
+    
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
@@ -630,6 +734,49 @@ router.get("/get-screenshot", async (req, res, next) => {
   } catch (error) {
     auditLogs.error("" || "User", "apps-route", "/get-heatmap", error);
     logger.error("" || "User", "apps-route", "/get-heatmap", error);
+    res
+      .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
+      .json(Response.errorResponse(error));
+  }
+});
+
+
+router.post("/get-journey", async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    const { body } = req;
+    //console.log("🚀 ~ router.post ~ body:", body)
+    const { appId, query } = body;
+    const { firstdate, lastdate } = query;
+
+    const result = await App.findOne({appId:appId}).select("visitor")
+    //console.log("🚀 ~ router.post ~ result:", result)
+    if (!result || result.length === 0 || result.visitor.length === 0) {
+      return "Ziyaretçiler bulunamadı.";
+    }
+
+    // Her visitor'ın data alanındaki son 3 veriyi al
+    const visitorsWithLastData = result.visitor.map((visitor) => ({
+      visitorId: visitor.visitorId,
+      date: visitor.date,
+      data: visitor.data.filter((item)=>item.type == "page_view").map((item) => item.url).filter((url, index, arr) => index === 0 || url !== arr[index - 1]), // Data'nın son 3 elemanı
+    }));
+
+    const totalVisitorResult = await filterVisitorsByDate(
+      visitorsWithLastData,
+      firstdate,
+      lastdate
+    );
+
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        journey: totalVisitorResult,
+      })
+    );
+  } catch (error) {
+    auditLogs.error("" || "User", "apps-route", "/get-journey", error);
+    logger.error("" || "User", "apps-route", "/get-journey", error);
     res
       .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
       .json(Response.errorResponse(error));
