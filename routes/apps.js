@@ -27,6 +27,42 @@ const axios = require("axios");
 const puppeteer = require("puppeteer");
 const getPlatormData = require("../lib/playwright");
 const AI = require("../db/models/Ai");
+const {
+  getMetaTitle,
+  getMetaDescription,
+  getMetaKeywords,
+  getMetaAuthor,
+  getMetaRobots,
+  getMetaPublisher,
+  getTwitterCard,
+  getFacebookOG,
+  getMetaCharset,
+  getLanguage,
+  getExternalLinks,
+  getHeadingStructure,
+  getFontSizes,
+  getStructuredData,
+  check404,
+  getCanonical,
+  getIframes,
+  getTables,
+  checkAMP,
+  getFaviconFunc,
+  checkResponsive,
+  checkMobileCompatibility,
+  getImagesWithoutAlt,
+  getLinksWithoutTitle,
+  getServerConfiguration,
+  analyzeKeywords,
+  getResourceCounts,
+  analyzePageSpeed,
+  getCodeToTextRatio,
+  analyzeDomain,
+  getRobotsTxt,
+  verifyRedirects,
+  checkBrokenLinks,
+  findBacklinkOpportunities
+} = require("../lib/SEO/seo");
 
 const router = require("express").Router();
 
@@ -91,7 +127,7 @@ router.post("/avg-duration", async (req, res) => {
 router.post("/line-card", async (req, res) => {
   try {
     const { body } = req;
-  
+
     const query = body.query;
 
     // console.log("🚀 ~ lineCard ~ query:", query);
@@ -255,8 +291,7 @@ router.post("/create-project", async (req, res, next) => {
       { new: true }
     );
 
-    const userInfo = await User.findOne({ _id:findRefreshToken.userId });
-  
+    const userInfo = await User.findOne({ _id: findRefreshToken.userId });
 
     const planValues = {
       free: 5,
@@ -598,7 +633,6 @@ router.post("/get-mouse-movements", async (req, res, next) => {
         },
       },
     ]);
-    
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
@@ -619,10 +653,9 @@ router.post("/get-clicks", async (req, res, next) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     const { body } = req;
-    console.log("🚀 ~ router.post ~ body:", body)
+    console.log("🚀 ~ router.post ~ body:", body);
     const { appId, query } = body;
     const { firstdate, lastdate } = query;
-
 
     // Tarih filtresi
     const dateFilter = {};
@@ -698,7 +731,6 @@ router.post("/get-clicks", async (req, res, next) => {
         },
       },
     ]);
-    
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
@@ -719,11 +751,9 @@ router.get("/get-screenshot", async (req, res, next) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     const { body } = req;
-    console.log("🚀 ~ router.post ~ body:", body)
+    console.log("🚀 ~ router.post ~ body:", body);
     const { appId, query } = body;
     const { firstdate, lastdate } = query;
-
-    
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
@@ -740,7 +770,6 @@ router.get("/get-screenshot", async (req, res, next) => {
   }
 });
 
-
 router.post("/get-journey", async (req, res, next) => {
   try {
     const refreshToken = req.cookies.refreshToken;
@@ -749,7 +778,7 @@ router.post("/get-journey", async (req, res, next) => {
     const { appId, query } = body;
     const { firstdate, lastdate } = query;
 
-    const result = await App.findOne({appId:appId}).select("visitor")
+    const result = await App.findOne({ appId: appId }).select("visitor");
     //console.log("🚀 ~ router.post ~ result:", result)
     if (!result || result.length === 0 || result.visitor.length === 0) {
       return "Ziyaretçiler bulunamadı.";
@@ -759,7 +788,10 @@ router.post("/get-journey", async (req, res, next) => {
     const visitorsWithLastData = result.visitor.map((visitor) => ({
       visitorId: visitor.visitorId,
       date: visitor.date,
-      data: visitor.data.filter((item)=>item.type == "page_view").map((item) => item.url).filter((url, index, arr) => index === 0 || url !== arr[index - 1]), // Data'nın son 3 elemanı
+      data: visitor.data
+        .filter((item) => item.type == "page_view")
+        .map((item) => item.url)
+        .filter((url, index, arr) => index === 0 || url !== arr[index - 1]), // Data'nın son 3 elemanı
     }));
 
     const totalVisitorResult = await filterVisitorsByDate(
@@ -782,5 +814,7 @@ router.post("/get-journey", async (req, res, next) => {
       .json(Response.errorResponse(error));
   }
 });
+
+
 
 module.exports = router;
