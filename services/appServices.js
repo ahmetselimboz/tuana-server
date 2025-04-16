@@ -139,13 +139,13 @@ const checkTrackingScript = async (appId, domain) => {
     await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 saniye bekleme süresi
 
     // `track.js` script'in yüklü olup olmadığını kontrol et
-    const hasTrackingScript = await page.evaluate(() =>
+    const hasTrackingScript = await page.evaluate((trackUrl) =>
       Array.from(document.scripts).some(
-        (script) =>
-          script.src.includes("https://cdn.tuanalytics.com/script/track.js")
-        //script.src.includes("/track.js")
-      )
+        (script) => script.src.includes(trackUrl)
+      ),
+      process.env.TRACK_URL // bu şekilde parametre olarak geçiyoruz
     );
+    
 
     const dataLayerContent = await page.evaluate(() => {
       return new Promise((resolve) => {
